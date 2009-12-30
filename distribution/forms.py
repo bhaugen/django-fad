@@ -122,6 +122,7 @@ def create_payment_transaction_form(inventory_transaction, pay_all, data=None):
     the_form.product = inventory_transaction.inventory_item.product.long_name
     return the_form
 
+# todo: replace with ServiceTransactions
 def create_processing_payment_form(processing_transaction, pay_all, data=None):
     order = 'None'
     
@@ -150,6 +151,7 @@ def create_processing_payment_form(processing_transaction, pay_all, data=None):
     the_form.product = inventory_transaction.inventory_item.product.long_name
     return the_form
 
+# todo: replace with ServiceTransactions
 def create_transportation_payment_form(order, pay_all, data=None):
 
     if pay_all:
@@ -183,8 +185,10 @@ def create_payment_transaction_forms(producer=None, payment=None, data=None):
         pay_all = False
         for p in payment.inventorytransaction_set.all():
             form_list.append(create_payment_transaction_form(p, pay_all, data))
-        for p in payment.processing_set.all():
-            form_list.append(create_processing_payment_form(p, pay_all, data))
+
+        # todo: replace with ServiceTransactions
+        #for p in payment.processing_set.all():
+        #    form_list.append(create_processing_payment_form(p, pay_all, data))
     due1 = InventoryTransaction.objects.filter( 
         payment=None,
         order_item__order__paid=True,
@@ -196,15 +200,19 @@ def create_payment_transaction_forms(producer=None, payment=None, data=None):
     due = itertools.chain(due1, due2)
     for d in due:
         form_list.append(create_payment_transaction_form(d, pay_all, data))
-    due3 = Processing.objects.filter(
-        payment=None,
-        processor=producer)
-    for d in due3:
-        tx = d.inventory_transaction()
-        if tx:
-            if tx.order_item:
-                if tx.order_item.order.paid:
-                    form_list.append(create_processing_payment_form(d, pay_all, data))
+
+    # todo: replace with ServiceTransactions
+    #due3 = Processing.objects.filter(
+    #    payment=None,
+    #    processor=producer)
+    #for d in due3:
+    #    tx = d.inventory_transaction()
+    #    if tx:
+    #        if tx.order_item:
+    #            if tx.order_item.order.paid:
+    #                form_list.append(create_processing_payment_form(d, pay_all, data))
+
+    # todo: replace with ServiceTransactions
     due4 = Order.objects.filter(
         paid=True,
         transportation_payment=None,
@@ -673,7 +681,7 @@ class OutputLotUpdateForm(forms.Form):
 
 
 class ProcessServiceForm(forms.ModelForm):
-    cost = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
+    amount = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
     
     class Meta:
         model = ServiceTransaction

@@ -238,8 +238,8 @@
 				{% for service_form in service_formset.forms %}
 					<tr>
 						<td>{{ service_form.service_type }}</td>
-						<td>{{ service_form.processor }}</td>
-						<td>{{ service_form.cost }}</td>
+						<td>{{ service_form.from_whom }}</td>
+						<td>{{ service_form.amount }}</td>
 					</tr>
 				{% endfor %}
 			{% endif %}

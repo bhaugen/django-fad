@@ -337,9 +337,10 @@ class Party(models.Model):
             return self
         
     def save(self, force_insert=False, force_update=False):
-        if(not self.content_type):
+        #import pdb; pdb.set_trace()
+        if not self.content_type:
             self.content_type = ContentType.objects.get_for_model(self.__class__)
-        self.save_base(force_insert, force_update)
+        self.save_base(force_insert=False, force_update=False)
         
     def formatted_address(self):
         return self.address.split(',')
@@ -660,23 +661,39 @@ class InventoryItem(models.Model):
         if not self.pk:
             self.expiration_date = self.inventory_date + datetime.timedelta(days=self.product.expiration_days)
         super(InventoryItem, self).save(force_insert, force_update)
-        
 
-class Payment(models.Model):
-    paid_to = models.ForeignKey(Party) 
-    payment_date = models.DateField()
-    amount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
+class EconomicEventType(models.Model):
+    name = models.CharField(max_length=255)
+
+class EconomicEvent(models.Model):
+    transaction_type = models.ForeignKey(EconomicEventType, related_name="events")
+    transaction_date = models.DateField()
+    from_whom = models.ForeignKey(Party, related_name="given_events")
+    to_whom = models.ForeignKey(Party, related_name="taken_events")
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    notes = models.CharField(max_length=64, blank=True)
+
+class Duality(models.Model):
+    initial_event = models.ForeignKey(EconomicEvent, related_name="initiating_dualities")
+    compensating_event = models.ForeignKey(EconomicEvent, related_name="compensating_dualities")
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+
+        
+class Payment(EconomicEvent):
+    #paid_to = models.ForeignKey(Party) 
+    #payment_date = models.DateField()
+    #amount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
     reference = models.CharField(max_length=64, blank=True)
 
     def __unicode__(self):
         amount_string = '$' + str(self.amount)
         return ' '.join([
-            self.payment_date.strftime('%Y-%m-%d'),
-            self.paid_to.short_name,
+            self.transaction_date.strftime('%Y-%m-%d'),
+            self.to_whom.short_name,
             amount_string])
 
     class Meta:
-        ordering = ('payment_date',)
+        ordering = ('transaction_date',)
 
 
 class Order(models.Model):
@@ -837,34 +854,6 @@ class OrderItem(models.Model):
 
 
 
-class Processing(models.Model):
-    inventory_item = models.OneToOneField(InventoryItem, related_name='processing')
-    processor = models.ForeignKey(Party)
-    process_date = models.DateField()
-    cost = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
-    payment = models.ForeignKey(Payment, blank=True, null=True)
-    
-    class Meta:
-        ordering = ('-process_date',)
-        verbose_name_plural = "Processing"
-        
-    def formatted_cost(self):
-        return self.cost.quantize(Decimal('.01'))
-    
-    def inventory_transaction(self):
-        #todo: this is a hack based on PBC rule that each lot of meat is indivisible,
-        # that is, will have only one transaction
-        # and processings with no inventory_transaction have already been filtered out
-        try:
-            return self.inventory_item.inventorytransaction_set.all()[0]
-        except:
-            return None
-    
-    def save(self, force_insert=False, force_update=False):
-        if not self.pk:
-            self.process_date = self.inventory_item.inventory_date
-        super(Processing, self).save(force_insert, force_update)
-
 class ServiceType(models.Model):
     name = models.CharField(max_length=64)
 
@@ -969,18 +958,6 @@ class Process(models.Model):
                 answer = False
         return answer
 
-def connected_functions(node, all_nodes, to_return):
-    to_return.append(node)
-    for subnode in all_nodes:
-        for out in subnode.outputs():
-            for consumer in out.resource_type.cluster_consumers(subnode.cluster):
-                if not consumer.function in to_return:
-                    connected_functions(consumer.function, all_nodes, to_return)
-        for inp in subnode.inputs():
-            for producer in inp.resource_type.cluster_producers(subnode.cluster):
-                if not producer.function in to_return:
-                    connected_functions(producer.function, all_nodes, to_return)
-    return to_return
 
 TX_CHOICES = (
     ('Receipt', 'Receipt'),         # inventory was received from outside the system
@@ -992,16 +969,14 @@ TX_CHOICES = (
     ('Reject', 'Reject'),           # inventory was rejected by a customer and does not need to be paid for
 )
 
-class InventoryTransaction(models.Model):
+class InventoryTransaction(EconomicEvent):
     inventory_item = models.ForeignKey(InventoryItem)
     process = models.ForeignKey(Process, blank=True, null=True, related_name='inventory_transactions')
-    transaction_type = models.CharField(max_length=10, choices=TX_CHOICES, default='Delivery')
-    transaction_date = models.DateField()
     order_item = models.ForeignKey(OrderItem, blank=True, null=True)
-    quantity = models.DecimalField(max_digits=8, decimal_places=2)
-    pay_producer = models.BooleanField(default=True)
-    notes = models.CharField(max_length=64, blank=True)
-    payment = models.ForeignKey(Payment, blank=True, null=True)
+    #quantity = models.DecimalField(max_digits=8, decimal_places=2)
+    #todo: remove pay_producer and sub duality for payment
+    #pay_producer = models.BooleanField(default=True)
+    #payment = models.ForeignKey(Payment, blank=True, null=True)
 
     def __unicode__(self):
         if self.order_item:
@@ -1011,15 +986,15 @@ class InventoryTransaction(models.Model):
         return " ".join([
             label, 
             'Inventory Item:', str(self.inventory_item), 
-            'Qty:', str(self.quantity)])
+            'Qty:', str(self.amount)])
         
     def save(self, force_insert=False, force_update=False):
         initial_qty = Decimal("0")
         if self.pk:
             prev_state = InventoryTransaction.objects.get(pk=self.pk)
-            initial_qty = prev_state.quantity
+            initial_qty = prev_state.amount
         super(InventoryTransaction, self).save(force_insert, force_update)
-        qty_delta = self.quantity - initial_qty
+        qty_delta = self.amount - initial_qty
         if self.transaction_type=="Receipt" or self.transaction_type=="Production":
             self.inventory_item.update_from_transaction(qty_delta)
         else:
@@ -1027,9 +1002,9 @@ class InventoryTransaction(models.Model):
         
     def delete(self):
         if self.transaction_type=="Receipt" or self.transaction_type=="Production":
-            self.inventory_item.update_from_transaction(-self.quantity)
+            self.inventory_item.update_from_transaction(-self.amount)
         else:
-            self.inventory_item.update_from_transaction(self.quantity)
+            self.inventory_item.update_from_transaction(self.amount)
         super(InventoryTransaction, self).delete()
         
     def order_customer(self):
@@ -1054,38 +1029,39 @@ class InventoryTransaction(models.Model):
         
         fee = producer_fee()
         unit_price = self.inventory_item.product.price
-        return (unit_price * self.quantity * (1 - fee)).quantize(Decimal('.01'), rounding=ROUND_UP)
+        return (unit_price * self.amount * (1 - fee)).quantize(Decimal('.01'), rounding=ROUND_UP)
     
     def processing_cost(self):
+        #todo: use new Process model
         cost = Decimal(0)
         item = self.inventory_item
-        try:
-            processing = item.processing
-        except Processing.DoesNotExist:
-            processing = None
-        if processing:
-            cost = processing.cost
-            item_qty = item.received if item.received else item.planned
-            if self.quantity < item_qty:
-                cost = (cost * self.quantity / item_qty).quantize(Decimal('.01'), rounding=ROUND_UP)
+        #try:
+        #    processing = item.processing
+        #except Processing.DoesNotExist:
+        #    processing = None
+        #if processing:
+        #    cost = processing.cost
+        #    item_qty = item.received if item.received else item.planned
+        #    if self.quantity < item_qty:
+        #        cost = (cost * self.quantity / item_qty).quantize(Decimal('.01'), rounding=ROUND_UP)
         return cost
 
     class Meta:
         ordering = ('-transaction_date',)
 
 
-class ServiceTransaction(models.Model):
+class ServiceTransaction(EconomicEvent):
+    #todo: will transaction_type work for service_type?
+    # no - ServiceType is actually a ResourceType
     service_type = models.ForeignKey(ServiceType)
     process = models.ForeignKey(Process, related_name='service_transactions')
-    processor = models.ForeignKey(Party)
-    cost = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
-    transaction_date = models.DateField()
-    notes = models.CharField(max_length=64, blank=True)
+    #cost = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
+    #todo: sub duality for payment
     payment = models.ForeignKey(Payment, blank=True, null=True)
 
     def __unicode__(self):
         return " ".join([
-            self.service_type.name,
-            self.processor.long_name,
+            self.transaction_type.name,
+            self.from_whom.long_name,
             ])
 

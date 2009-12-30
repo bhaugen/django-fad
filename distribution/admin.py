@@ -51,9 +51,9 @@ class ProductPlanAdmin(admin.ModelAdmin):
     
 admin.site.register(ProductPlan, ProductPlanAdmin)
 
-
-class ProcessingInline(admin.TabularInline):
-    model = Processing
+# todo: replace with ServiceTransactions?
+#class ProcessingInline(admin.TabularInline):
+#    model = Processing
 
 
 class InventoryItemAdmin(admin.ModelAdmin):
@@ -63,17 +63,17 @@ class InventoryItemAdmin(admin.ModelAdmin):
     list_filter = ['producer', 'product']
     search_fields = ['producer__short_name, product__short_name']
     date_hierarchy = 'inventory_date'
-    inlines = [ ProcessingInline, ]
+#    inlines = [ ProcessingInline, ]
     
 admin.site.register(InventoryItem, InventoryItemAdmin)
 
 
-class ProcessingAdmin(admin.ModelAdmin):
-    list_display = ('inventory_item', 'process_date', 'processor', 'cost', 'payment')
-    list_filter = ['processor', 'inventory_item']
-    date_hierarchy = 'process_date'
+#class ProcessingAdmin(admin.ModelAdmin):
+#    list_display = ('inventory_item', 'process_date', 'processor', 'cost', 'payment')
+#    list_filter = ['processor', 'inventory_item']
+#    date_hierarchy = 'process_date'
   
-admin.site.register(Processing, ProcessingAdmin)
+#admin.site.register(Processing, ProcessingAdmin)
 
 
 class OrderItemInline(admin.TabularInline):
@@ -112,7 +112,7 @@ admin.site.register(Process, ProcessAdmin)
 
 
 class InventoryTransactionAdmin(admin.ModelAdmin):
-    list_display = ('transaction_type', 'transaction_date', 'order_item', 'process', 'product', 'inventory_item', 'quantity', 'notes', 'payment')
+    list_display = ('transaction_type', 'transaction_date',  'from_whom', 'to_whom', 'order_item', 'process', 'product', 'inventory_item', 'amount', 'notes')
     #both ordering statements below caused mysterious error in admin:
     #no such column: orders_orderitem.order
     #ordering = ('order_item', 'inventory_item')
@@ -127,13 +127,13 @@ class InventoryTransactionAdmin(admin.ModelAdmin):
 admin.site.register(InventoryTransaction, InventoryTransactionAdmin)
 
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ('payment_date', 'paid_to', 'amount', 'reference')
+    list_display = ('transaction_date', 'from_whom', 'to_whom', 'amount', 'reference')
   
 admin.site.register(Payment, PaymentAdmin)
 
 
 class ServiceTransactionAdmin(admin.ModelAdmin):
-    list_display = ('service_type', 'process', 'processor', 'transaction_date', 'cost', 'payment')
+    list_display = ('service_type', 'process', 'from_whom', 'to_whom', 'transaction_date', 'amount')
   
 admin.site.register(ServiceTransaction, ServiceTransactionAdmin)
 
