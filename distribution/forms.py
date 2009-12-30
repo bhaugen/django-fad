@@ -685,6 +685,6 @@ class ProcessServiceForm(forms.ModelForm):
     
     class Meta:
         model = ServiceTransaction
-        exclude = ('process', 'transaction_date', 'payment', 'notes')
+        exclude = ('process', 'to_whom', 'transaction_date', 'payment', 'notes')
 
 

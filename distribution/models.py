@@ -652,7 +652,7 @@ class InventoryItem(models.Model):
         else:
             # to deal with Django bug, fixed in 1.1
             remaining = Decimal(self.remaining)
-            print self, "remaining:", remaining, "qty:", qty
+            #print self, "remaining:", remaining, "qty:", qty
             remaining += qty
             self.remaining = max([Decimal("0"), remaining])
             self.save()
@@ -662,11 +662,11 @@ class InventoryItem(models.Model):
             self.expiration_date = self.inventory_date + datetime.timedelta(days=self.product.expiration_days)
         super(InventoryItem, self).save(force_insert, force_update)
 
-class EconomicEventType(models.Model):
-    name = models.CharField(max_length=255)
+# EconomicEventType is not ripe
+#class EconomicEventType(models.Model):
+#    name = models.CharField(max_length=255)
 
 class EconomicEvent(models.Model):
-    transaction_type = models.ForeignKey(EconomicEventType, related_name="events")
     transaction_date = models.DateField()
     from_whom = models.ForeignKey(Party, related_name="given_events")
     to_whom = models.ForeignKey(Party, related_name="taken_events")
@@ -959,7 +959,7 @@ class Process(models.Model):
         return answer
 
 
-TX_CHOICES = (
+TX_TYPES = (
     ('Receipt', 'Receipt'),         # inventory was received from outside the system
     ('Delivery', 'Delivery'),       # inventory was delivered to a customer
     ('Transfer', 'Transfer'),       # combination delivery and receipt inside the system
@@ -970,6 +970,7 @@ TX_CHOICES = (
 )
 
 class InventoryTransaction(EconomicEvent):
+    transaction_type = models.CharField(max_length=10, choices=TX_TYPES, default='Delivery')
     inventory_item = models.ForeignKey(InventoryItem)
     process = models.ForeignKey(Process, blank=True, null=True, related_name='inventory_transactions')
     order_item = models.ForeignKey(OrderItem, blank=True, null=True)

@@ -1726,6 +1726,11 @@ def process_selection(request):
 
 @login_required
 def new_process(request, process_type_id):
+    try:
+        foodnet = FoodNetwork.objects.get(pk=1)
+    except FoodNetwork.DoesNotExist:
+        return render_to_response('distribution/network_error.html')
+
     weekstart = current_week()
     weekend = weekstart + datetime.timedelta(days=5)
     expired_date = weekstart + datetime.timedelta(days=5)
@@ -1778,6 +1783,7 @@ def new_process(request, process_type_id):
             if input_create_form.is_valid():
                 data = input_create_form.cleaned_data
                 lot = input_create_form.save(commit=False)
+                producer = data["producer"]
                 qty = data["planned"]
                 process = Process(
                     process_type = pt,
@@ -1789,6 +1795,9 @@ def new_process(request, process_type_id):
                 issue = InventoryTransaction(
                     transaction_type = "Issue",
                     process = process,
+                    # todo: is to_whom correct in all these process tx?
+                    from_whom = producer, 
+                    to_whom = producer, 
                     inventory_item = lot,
                     transaction_date = weekstart,
                     amount = qty)
@@ -1799,6 +1808,7 @@ def new_process(request, process_type_id):
                 data = input_select_form.cleaned_data
                 lot_id = data['lot']
                 lot = InventoryItem.objects.get(id=lot_id)
+                producer = data["producer"]
                 qty = data["quantity"]
                 process = Process(
                     process_type = pt,
@@ -1807,6 +1817,8 @@ def new_process(request, process_type_id):
                 issue = InventoryTransaction(
                     transaction_type = "Issue",
                     process = process,
+                    from_whom = producer, 
+                    to_whom = producer, 
                     inventory_item = lot,
                     transaction_date = weekstart,
                     amount = qty)
@@ -1817,6 +1829,7 @@ def new_process(request, process_type_id):
                 if service_formset.is_valid(): # todo: shd be selective, or not?
                     for service_form in service_formset.forms:
                         tx = service_form.save(commit=False)
+                        tx.to_whom = foodnet
                         tx.process = process
                         tx.transaction_date = weekstart
                         tx.save()
@@ -1826,14 +1839,17 @@ def new_process(request, process_type_id):
                         data = form.cleaned_data
                         lot = form.save(commit=False)
                         qty = data["planned"]
+                        producer = data["producer"]
                         lot.inventory_date = weekstart
                         lot.save()
                         tx = InventoryTransaction(
                             transaction_type = "Production",
                             process = process,
+                            from_whom = producer, 
+                            to_whom = producer, 
                             inventory_item = lot,
                             transaction_date = weekstart,
-                            quantity = qty)
+                            amount = qty)
                         tx.save()
 
             return HttpResponseRedirect('/%s/%s/'
@@ -1869,7 +1885,7 @@ def delete_process_confirmation(request, process_id):
         outputs_with_lot = []
         for output in process.outputs():
             lot = output.inventory_item
-            qty = output.quantity
+            qty = output.amount
             if lot.planned == qty:
                 outputs_with_lot.append(output)
             else:
@@ -1878,7 +1894,7 @@ def delete_process_confirmation(request, process_id):
         inputs_with_lot = []
         for inp in process.inputs():
             lot = inp.inventory_item
-            qty = inp.quantity
+            qty = inp.amount
             if lot.planned == qty:
                 inputs_with_lot.append(inp)
             else:
@@ -1896,13 +1912,13 @@ def delete_process(request, process_id):
         process = get_object_or_404(Process, id=process_id)
         for output in process.outputs():
             lot = output.inventory_item
-            qty = output.quantity
+            qty = output.amount
             output.delete()
             if lot.planned == qty:
                 lot.delete()
         for inp in process.inputs():
             lot = inp.inventory_item
-            qty = inp.quantity
+            qty = inp.amount
             inp.delete()
             if lot.planned == qty:
                 lot.delete()
