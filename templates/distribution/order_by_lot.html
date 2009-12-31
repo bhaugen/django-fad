@@ -252,7 +252,7 @@
             </tr>
             {% for item_form in formset.forms %}
                  <tr>
-					 <td class="read-only-td" > {{ item_form.lot_label }} </td>
+					 <td class="read-only-td" > {{ item_form.initial.lot_label }} </td>
 					 <td class="read-only-td" > {{ item_form.avail }} </td>
 					 <td> {{ item_form.unit_price }} </td>
 					 <td> {{ item_form.quantity }} </td>

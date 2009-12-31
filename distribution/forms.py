@@ -81,7 +81,7 @@ class PaymentUpdateSelectionForm(forms.Form):
     payment = forms.ChoiceField(required=False)
     def __init__(self, *args, **kwargs):
         super(PaymentUpdateSelectionForm, self).__init__(*args, **kwargs)
-        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.objects.all()]
+        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.objects.all().exclude(pk=1)]
         self.fields['payment'].choices = [('', 'New')] + [(payment.id, payment) for payment in Payment.objects.all()]
 
 class PaymentTransactionForm(forms.Form):
@@ -227,13 +227,12 @@ class InventoryHeaderForm(forms.Form):
     avail_date = forms.DateField()
     def __init__(self, *args, **kwargs):
         super(InventoryHeaderForm, self).__init__(*args, **kwargs)
-        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.objects.all()]
+        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.objects.all().exclude(pk=1)]
 
 class InventorySelectionForm(forms.Form):
     producer = forms.ChoiceField()
     avail_date = forms.DateField(
         widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
-    meat = forms.BooleanField(required=False)
     def __init__(self, *args, **kwargs):
         super(InventorySelectionForm, self).__init__(*args, **kwargs)
         self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.subclass_objects.planned_producers()]
@@ -265,7 +264,7 @@ class PaymentSelectionForm(forms.Form):
                                                ])
     def __init__(self, *args, **kwargs):
         super(PaymentSelectionForm, self).__init__(*args, **kwargs)
-        self.fields['producer'].choices = [('0', 'All')] + [(prod.id, prod.short_name) for prod in Party.objects.all()]
+        self.fields['producer'].choices = [('0', 'All')] + [(prod.id, prod.short_name) for prod in Party.objects.all().exclude(pk=1)]
         
 class StatementSelectionForm(forms.Form):
     from_date = forms.DateField(
@@ -277,7 +276,7 @@ class PlanSelectionForm(forms.Form):
     producer = forms.ChoiceField()
     def __init__(self, *args, **kwargs):
         super(PlanSelectionForm, self).__init__(*args, **kwargs)
-        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.objects.all()]
+        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.objects.all().exclude(pk=1)]
 
         
 class PlanForm(forms.ModelForm):
@@ -294,7 +293,7 @@ class PlanForm(forms.ModelForm):
         
     def __init__(self, *args, **kwargs):
         super(PlanForm, self).__init__(*args, **kwargs)
-        sublist = list(Party.subclass_objects.all())
+        sublist = list(Party.subclass_objects.all().exclude(pk=1))
         sublist.sort(lambda x, y: cmp(y.__class__, x.__class__))
         self.fields['distributor'].choices = [(party.id, party.short_name) for party in sublist]
         
@@ -347,23 +346,23 @@ class InventoryItemForm(forms.ModelForm):
         
     def __init__(self, *args, **kwargs):
         super(InventoryItemForm, self).__init__(*args, **kwargs)
-        self.fields['custodian'].choices = [('', '------------')] + [(prod.id, prod.short_name) for prod in Party.objects.all()]
+        self.fields['custodian'].choices = [('', '------------')] + [(prod.id, prod.short_name) for prod in Party.objects.all().exclude(pk=1)]
 
 
 def create_inventory_item_forms(producer, avail_date, data=None):
     #todo: is this the proper date range for PBC?
     monday = avail_date - datetime.timedelta(days=datetime.date.weekday(avail_date))
     saturday = monday + datetime.timedelta(days=5)
+    #import pdb; pdb.set_trace()
     items = InventoryItem.objects.filter(
         producer=producer, 
-        product__meat=False,
+        remaining__gt=0,
         inventory_date__range=(monday, saturday))
     item_dict = {}
     for item in items:
         item_dict[item.product.id] = item
     plans = ProductPlan.objects.filter(
         producer=producer, 
-        product__meat=False,
         from_date__lte=avail_date, 
         to_date__gte=saturday)
     form_list = []
@@ -415,7 +414,7 @@ class MeatItemForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(MeatItemForm, self).__init__(*args, **kwargs)
         #self.fields['product'].choices = [(prod.id, prod.long_name) for prod in product_list]
-        self.fields['custodian'].choices = [('', '------------')] + [(proc.id, proc.long_name) for proc in Party.objects.all()]
+        self.fields['custodian'].choices = [('', '------------')] + [(proc.id, proc.long_name) for proc in Party.objects.all().exclude(pk=1)]
         self.fields['processor'].choices = [('', '------------')] + [(proc.id, proc.long_name) for proc in Processor.objects.all()]
 
 
@@ -425,7 +424,7 @@ class OrderByLotForm(forms.ModelForm):
     product_id = forms.CharField(widget=forms.HiddenInput)
     #lot_qty = forms.DecimalField(widget=forms.TextInput
     #    (attrs={'readonly':'true', 'class': 'read-only-input', 'size': '8', 'style': 'text-align: right;'}))
-    lot_label = forms.CharField(widget=forms.TextInput
+    lot_label = forms.CharField(required=False, widget=forms.TextInput
         (attrs={'readonly':'true', 'class': 'read-only-input', 'size': '80'}))
     avail = forms.DecimalField(widget=forms.TextInput
         (attrs={'readonly':'true', 'class': 'read-only-input', 'size': '6', 'style': 'text-align: right;'}))
@@ -532,7 +531,7 @@ class OrderForm(forms.ModelForm):
         
     def __init__(self, *args, **kwargs):
         super(OrderForm, self).__init__(*args, **kwargs)
-        sublist = list(Party.subclass_objects.all())
+        sublist = list(Party.subclass_objects.all().exclude(pk=1))
         sublist.sort(lambda x, y: cmp(y.__class__, x.__class__))
         self.fields['distributor'].choices = [(party.id, party.short_name) for party in sublist]
 

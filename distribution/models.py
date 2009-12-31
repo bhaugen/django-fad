@@ -98,16 +98,81 @@ class DeliveryDistributor(object):
          self.distributor = distributor
          self.email = email
          self.customers = customers
-         
 
-class FoodNetwork(models.Model):
+# inheritance approach based on
+# http://www.djangosnippets.org/snippets/1034/
+class SubclassingQuerySet(QuerySet):
+    def __getitem__(self, k):
+        result = super(SubclassingQuerySet, self).__getitem__(k)
+        if isinstance(result, models.Model) :
+            return result.as_leaf_class()
+        else :
+            return result
+    def __iter__(self):
+        for item in super(SubclassingQuerySet, self).__iter__():
+            yield item.as_leaf_class()
+
+    
+class PartyManager(models.Manager):
+    
+    def get_query_set(self):
+        return SubclassingQuerySet(self.model)
+    
+    def planned_producers(self):
+        producers = []
+        all_prods = Party.subclass_objects.all()
+        for prod in all_prods:
+            if prod.product_plans.all().count():
+                producers.append(prod)
+        return producers
+
+    
+class Party(models.Model):
+    member_id = models.CharField(max_length=12, blank=True)
     short_name = models.CharField(max_length=32, unique=True)
     long_name = models.CharField(max_length=64, blank=True)
     contact = models.CharField(max_length=64, blank=True)
     phone = PhoneNumberField(blank=True)
-    address = models.CharField(max_length=96, blank=True, 
-            help_text='Enter commas only where you want to split address lines for formatting.')
+    cell = PhoneNumberField(blank=True)
+    fax = PhoneNumberField(blank=True)
+    address = models.CharField(max_length=96, blank=True)
     email_address = models.EmailField(max_length=96, blank=True, null=True)
+    content_type = models.ForeignKey(ContentType,editable=False,null=True)
+    
+    objects = models.Manager()
+    subclass_objects = PartyManager()
+
+    def __unicode__(self):
+        return self.short_name
+    
+    @property
+    def email(self):
+        return self.email_address
+
+    class Meta:
+        ordering = ('short_name',)
+        
+    def as_leaf_class(self):
+        if self.content_type:
+            content_type = self.content_type
+            model = content_type.model_class()
+            if (model == Party):
+                return self
+            return model.objects.get(id=self.id)
+        else:
+            return self
+        
+    def save(self, force_insert=False, force_update=False):
+        #import pdb; pdb.set_trace()
+        if not self.content_type:
+            self.content_type = ContentType.objects.get_for_model(self.__class__)
+        self.save_base(force_insert=False, force_update=False)
+        
+    def formatted_address(self):
+        return self.address.split(',')
+         
+
+class FoodNetwork(Party):
     billing_contact = models.CharField(max_length=64, blank=True)
     billing_phone = PhoneNumberField(blank=True, null=True)
     billing_address = models.CharField(max_length=96, blank=True, null=True, 
@@ -271,81 +336,6 @@ class FoodNetwork(models.Model):
             expiration_date__gte=weekend)
           
 
-# inheritance approach based on
-# http://www.djangosnippets.org/snippets/1034/
-class SubclassingQuerySet(QuerySet):
-    def __getitem__(self, k):
-        result = super(SubclassingQuerySet, self).__getitem__(k)
-        if isinstance(result, models.Model) :
-            return result.as_leaf_class()
-        else :
-            return result
-    def __iter__(self):
-        for item in super(SubclassingQuerySet, self).__iter__():
-            yield item.as_leaf_class()
-
-    
-class PartyManager(models.Manager):
-    
-    def get_query_set(self):
-        return SubclassingQuerySet(self.model)
-    
-    def planned_producers(self):
-        producers = []
-        all_prods = Party.subclass_objects.all()
-        for prod in all_prods:
-            if prod.product_plans.all().count():
-                producers.append(prod)
-        return producers
-
-    
-class Party(models.Model):
-    short_name = models.CharField(max_length=32, unique=True)
-    long_name = models.CharField(max_length=64, blank=True)
-    member_id = models.CharField(max_length=12, blank=True)
-    contact = models.CharField(max_length=64, blank=True)
-    phone = PhoneNumberField(blank=True)
-    cell = PhoneNumberField(blank=True)
-    fax = PhoneNumberField(blank=True)
-    address = models.CharField(max_length=96, blank=True)
-    email_address = models.EmailField(max_length=96, blank=True, null=True)
-    content_type = models.ForeignKey(ContentType,editable=False,null=True)
-    delivers = models.BooleanField(default=False,
-        help_text='Delivers products directly to customers?')
-    
-    objects = models.Manager()
-    subclass_objects = PartyManager()
-
-    def __unicode__(self):
-        return self.short_name
-    
-    @property
-    def email(self):
-        return self.email_address
-
-    class Meta:
-        ordering = ('short_name',)
-        
-    def as_leaf_class(self):
-        if self.content_type:
-            content_type = self.content_type
-            model = content_type.model_class()
-            if (model == Party):
-                return self
-            return model.objects.get(id=self.id)
-        else:
-            return self
-        
-    def save(self, force_insert=False, force_update=False):
-        #import pdb; pdb.set_trace()
-        if not self.content_type:
-            self.content_type = ContentType.objects.get_for_model(self.__class__)
-        self.save_base(force_insert=False, force_update=False)
-        
-    def formatted_address(self):
-        return self.address.split(',')
-
-
 class ProducerManager(models.Manager):
 
     def planned_producers(self):
@@ -358,7 +348,8 @@ class ProducerManager(models.Manager):
 
 
 class Producer(Party):
-    pass
+    delivers = models.BooleanField(default=False,
+        help_text='Delivers products directly to customers?')
 
 
 class Processor(Party):
@@ -369,17 +360,7 @@ class Distributor(Party):
     pass
 
 
-class Customer(models.Model):
-    short_name = models.CharField(max_length=32, unique=True)
-    long_name = models.CharField(max_length=64, blank=True)
-    member_id = models.CharField(max_length=12, blank=True)
-    contact = models.CharField(max_length=64, blank=True)
-    phone = PhoneNumberField(blank=True)
-    cell = PhoneNumberField(blank=True)
-    fax = PhoneNumberField(blank=True)
-    address = models.CharField(max_length=96, blank=True, 
-            help_text='Enter commas only where you want to split address lines for formatting.')
-    email_address = models.EmailField(max_length=96, blank=True, null=True)
+class Customer(Party):
     charge = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True,
         help_text='Any value but 0 in this field will override the default charge from the Food Network')
     apply_charge = models.BooleanField(default=True,

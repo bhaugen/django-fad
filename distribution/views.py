@@ -123,7 +123,7 @@ def send_order_notices(request):
 
 def json_customer_info(request, customer_id):
     # Note: serializer requires an iterable, not a single object. Thus filter rather than get.
-    data = serializers.serialize("json", Customer.objects.filter(pk=customer_id))
+    data = serializers.serialize("json", Party.objects.filter(pk=customer_id))
     return HttpResponse(data, mimetype="text/json-comment-filtered")
 
 
@@ -188,25 +188,20 @@ def plan_update(request, prod_id):
 
 @login_required
 def inventory_selection(request):
-    # default date is Monday
-    #availdate = datetime.date.today()
-    #availdate = availdate - datetime.timedelta(days=datetime.date.weekday(availdate))
+    this_week = current_week()
+    init = {"avail_date": this_week,}
     if request.method == "POST":
         ihform = InventorySelectionForm(request.POST)  
         if ihform.is_valid():
             ihdata = ihform.cleaned_data
             producer_id = ihdata['producer']
             inv_date = ihdata['avail_date']
-            if ihdata['meat']:
-                return HttpResponseRedirect('/%s/%s/%s/%s/%s/' 
-                    % ('meatupdate', producer_id, inv_date.year, inv_date.month, inv_date.day))
-            else:
-                return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-                   % ('inventoryupdate', producer_id, inv_date.year, inv_date.month, inv_date.day))
+            return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
+               % ('inventoryupdate', producer_id, inv_date.year, inv_date.month, inv_date.day))
     else:
         #ihform = InventorySelectionForm(initial={'avail_date': availdate, })
     #return render_to_response('distribution/inventory_selection.html', {'avail_date': availdate, 'header_form': ihform})
-        ihform = InventorySelectionForm()
+        ihform = InventorySelectionForm(initial=init)
     return render_to_response('distribution/inventory_selection.html', {'header_form': ihform})
 
 @login_required
@@ -264,6 +259,7 @@ def inventory_update(request, prod_id, year, month, day):
 
 @login_required
 def order_selection(request):
+    init = {"order_date": current_week(),}
     if request.method == "POST":
         ihform = OrderSelectionForm(request.POST)  
         if ihform.is_valid():
@@ -275,7 +271,7 @@ def order_selection(request):
     else:
         #ihform = OrderSelectionForm(initial={'order_date': orderdate, })
     #return render_to_response('distribution/order_selection.html', {'order_date': orderdate, 'header_form': ihform})
-        ihform = OrderSelectionForm()
+        ihform = OrderSelectionForm(initial=init)
     return render_to_response('distribution/order_selection.html', {'header_form': ihform})
 
 
@@ -396,6 +392,7 @@ def create_order_by_lot_forms(order, order_date, data=None):
                        
     OrderByLotFormSet = formset_factory(OrderByLotForm, extra=0)
     formset = OrderByLotFormSet(initial=initial_data)
+    #import pdb; pdb.set_trace()
     return formset
 
 @login_required
@@ -453,7 +450,7 @@ def order_by_lot(request, cust_id, year, month, day):
                             oi.quantity = qty
                             oi.notes=notes
                             oi.save()
-                            delivery.quantity=qty
+                            delivery.amount=qty
                             delivery.save()
                         else:
                             delivery.delete()
@@ -474,7 +471,9 @@ def order_by_lot(request, cust_id, year, month, day):
                             transaction_type="Delivery",
                             inventory_item=lot,
                             order_item=oi,
-                            quantity=qty,
+                            from_whom = lot.producer,
+                            to_whom = customer,
+                            amount=qty,
                             transaction_date=orderdate)
                         delivery.save()
 
@@ -482,6 +481,10 @@ def order_by_lot(request, cust_id, year, month, day):
                % ('order', the_order.id))
         #if invalid
         else:
+            #print "ordform:", ordform
+            #for form in formset.forms:
+            #    print form.as_table()
+            #todo: this is wrong, shd redisplay with errors
             if order:
                 ordform = OrderForm(instance=order)
             else:
@@ -678,6 +681,7 @@ def order_item_rows(thisdate):
 
 
 def order_table_selection(request):
+    init = {"selected_date": current_week(),}
     if request.method == "POST":
         dsform = DateSelectionForm(request.POST)  
         if dsform.is_valid():
@@ -686,7 +690,7 @@ def order_table_selection(request):
             return HttpResponseRedirect('/%s/%s/%s/%s/'
                % ('ordertable', ord_date.year, ord_date.month, ord_date.day))
     else:
-        dsform = DateSelectionForm()
+        dsform = DateSelectionForm(initial=init)
     return render_to_response('distribution/order_table_selection.html', {'dsform': dsform,})
 
 ORDER_HEADINGS = ["Customer", "Order", "Lot", "Custodian", "Order Qty"]
@@ -1448,6 +1452,7 @@ def json_payments(request, producer_id):
 
 @login_required
 def invoice_selection(request):
+    init = {"order_date": current_week(),}
     if request.method == "POST":
         dsform = DeliverySelectionForm(request.POST)  
         if dsform.is_valid():
@@ -1457,7 +1462,7 @@ def invoice_selection(request):
             return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
                % ('invoices', cust_id, ord_date.year, ord_date.month, ord_date.day))
     else:
-        dsform = DeliverySelectionForm()
+        dsform = DeliverySelectionForm(initial=init)
     return render_to_response('distribution/invoice_selection.html', {'header_form': dsform})
 
 @login_required

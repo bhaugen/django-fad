@@ -39,7 +39,7 @@
         {% for tx in process.inputs %}
             <tr>
                 <td>{{ tx.inventory_item.lot_id }}</td>
-                <td style="text-align: right; ">{{ tx.quantity }}</td>
+                <td style="text-align: right; ">{{ tx.amount }}</td>
         {% endfor %}
     </table>
 
@@ -53,8 +53,8 @@
         {% for tx in process.services %}
             <tr>
                 <td>{{ tx.service_type }}</td>
-                <td>{{ tx.processor }}</td>
-                <td style="text-align: right; ">{{ tx.cost }}</td>
+                <td>{{ tx.from_whom }}</td>
+                <td style="text-align: right; ">{{ tx.amount }}</td>
         {% endfor %}
     </table>
 
@@ -69,7 +69,7 @@
             <tr>
                 <td>{{ tx.inventory_item.lot_id }}</td>
                 <td>{{ tx.inventory_item.custodian }}</td>
-                <td style="text-align: right; ">{{ tx.quantity }}</td>
+                <td style="text-align: right; ">{{ tx.amount }}</td>
         {% endfor %}
     </table>
 
