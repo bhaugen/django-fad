@@ -768,6 +768,7 @@ class OrderItem(models.Model):
         return ', '.join(list(set(producers)))
     
     def processes(self):
+        # todo: replace with new Process stuff
         processes = []
         try:
             deliveries = self.inventorytransaction_set.all()
@@ -804,6 +805,7 @@ class OrderItem(models.Model):
     
     def extended_price(self):
         answer = self.quantity * self.unit_price
+        # todo: think about this, is it correct?
         #if self.processing():
         #    answer += self.processing().cost
         return answer.quantize(Decimal('.01'), rounding=ROUND_UP)
@@ -930,6 +932,24 @@ class Process(models.Model):
         else:
             return None
 
+    def service_cost(self):
+        cost = Decimal("0")
+        for s in self.services():
+            cost += s.amount
+        return cost
+
+    def cumulative_service_cost(self):
+        cost = self.service_cost()
+        for proc in self.previous_processes_recursive():
+            cost += proc.service_cost()
+        return cost
+
+    def cumulative_services(self):
+        svs = self.services()
+        for proc in self.previous_processes_recursive():
+            svs.extend(proc.services())
+        return svs
+
     def is_deletable(self):
         answer = True
         for output in self.outputs():
@@ -1013,20 +1033,19 @@ class InventoryTransaction(EconomicEvent):
         unit_price = self.inventory_item.product.price
         return (unit_price * self.amount * (1 - fee)).quantize(Decimal('.01'), rounding=ROUND_UP)
     
-    def processing_cost(self):
-        #todo: use new Process model
+    def service_cost(self):
         cost = Decimal(0)
         item = self.inventory_item
-        #try:
-        #    processing = item.processing
-        #except Processing.DoesNotExist:
-        #    processing = None
-        #if processing:
-        #    cost = processing.cost
-        #    item_qty = item.received if item.received else item.planned
-        #    if self.quantity < item_qty:
-        #        cost = (cost * self.quantity / item_qty).quantize(Decimal('.01'), rounding=ROUND_UP)
+        for tx in item.inventorytransaction_set.filter(transaction_type="Production"):
+            cost += tx.process.cumulative_service_cost()
         return cost
+
+    def services(self):
+        svs = []
+        item = self.inventory_item
+        for tx in item.inventorytransaction_set.filter(transaction_type="Production"):
+            svs.extend(tx.process.cumulative_services())
+        return svs
 
     class Meta:
         ordering = ('-transaction_date',)
@@ -1043,7 +1062,7 @@ class ServiceTransaction(EconomicEvent):
 
     def __unicode__(self):
         return " ".join([
-            self.transaction_type.name,
+            self.service_type.name,
             self.from_whom.long_name,
             ])
 
