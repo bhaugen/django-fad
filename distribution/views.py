@@ -1380,6 +1380,11 @@ def payment_update_selection(request):
 @login_required
 def payment_update(request, producer_id, payment_id):
 
+    try:
+        food_net = FoodNetwork.objects.get(pk=1)
+    except FoodNetwork.DoesNotExist:
+        return render_to_response('distribution/network_error.html')
+
     producer_id = int(producer_id)
     if producer_id:
         producer = get_object_or_404(Party, pk=producer_id)
@@ -1400,7 +1405,9 @@ def payment_update(request, producer_id, payment_id):
             paymentform = PaymentForm(request.POST)
         itemforms = create_payment_transaction_forms(producer, payment, request.POST)     
         if paymentform.is_valid() and all([itemform.is_valid() for itemform in itemforms]):
-            the_payment = paymentform.save()
+            the_payment = paymentform.save(commit=False)
+            the_payment.from_whom = food_net
+            the_payment.save()
             for itemform in itemforms:
                 data = itemform.cleaned_data
                 paid = data['paid']
@@ -1408,6 +1415,8 @@ def payment_update(request, producer_id, payment_id):
                 tx_type = data['transaction_type']
 
                 # todo: replace with ServiceTransactions
+                # and replace transportation_payment field with Duality
+                # (which also means adding a ServiceTx for order.transportation)
                 if tx_type == 'Order':
                     tx = Order.objects.get(pk=tx_id)
                     if paid:
@@ -1419,35 +1428,36 @@ def payment_update(request, producer_id, payment_id):
                                 tx.transportation_payment = None
                                 tx.save()
                 else:
-
-                    # todo: replace with ServiceTransactions
                     if tx_type == 'Processing':
-                        tx = Processing.objects.get(pk=tx_id)
+                        tx = ServiceTransaction.objects.get(pk=tx_id)
                     else:
                         tx = InventoryTransaction.objects.get(pk=tx_id)
                     if paid:
-                        tx.payment = the_payment
-                        tx.save()
+                        # todo: assuming here that payments always pay the full tx.amount
+                        duality = Duality(
+                            initial_event = tx,
+                            compensating_event = the_payment,
+                            amount = tx.amount)
+                        duality.save()
                     else:
-                        if tx.payment:
-                            if tx.payment.id == the_payment.id:
-                                tx.payment = None
-                                tx.save()
+                        tx.delete_compensation()
             return HttpResponseRedirect('/%s/%s/'
                % ('payment', the_payment.id))
+        else:
+            import pdb; pdb.set_trace()
     else:
         if payment:
             paymentform = PaymentForm(instance=payment)
         else:
-            paymentform = PaymentForm(initial={'payment_date': datetime.date.today(),})
-        paymentform.fields['paid_to'].choices = [(producer.id, producer.short_name)]
+            paymentform = PaymentForm(initial={'transaction_date': datetime.date.today(),})
+        paymentform.fields['to_whom'].choices = [(producer.id, producer.short_name)]
         itemforms = create_payment_transaction_forms(producer, payment)
     return render_to_response('distribution/payment_update.html', 
         {'payment': payment, 'payment_form': paymentform, 'item_forms': itemforms})
 
 def json_payments(request, producer_id):
     # todo: shd limit to a few most recent payments
-    data = serializers.serialize("json", Payment.objects.filter(paid_to=int(producer_id)))
+    data = serializers.serialize("json", Payment.objects.filter(to_whom=int(producer_id)))
     return HttpResponse(data, mimetype="text/json-comment-filtered")
 
 @login_required

@@ -85,13 +85,13 @@
 					<td style="text-align: right; ">{{ orderitem.unit_price }}</td>
 					<td style="text-align: right; ">{{ orderitem.extended_price }}</td>
 				</tr>
-				{% if orderitem.processing_cost %}
+				{% if orderitem.service_cost %}
 					<tr>
 						<td>Processing</td>
 						<td>{{ orderitem.processors }}</td>
 						<td style="text-align: right; ">&nbsp;</td>
-						<td style="text-align: right; ">{{ orderitem.processing_cost }}</td>
-						<td style="text-align: right; ">{{ orderitem.processing_cost }}</td>
+						<td style="text-align: right; ">{{ orderitem.service_cost }}</td>
+						<td style="text-align: right; ">{{ orderitem.service_cost }}</td>
 					</tr>
 				{% endif %}
 			{% endfor %}

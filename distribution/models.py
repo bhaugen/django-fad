@@ -583,9 +583,12 @@ class InventoryItem(models.Model):
         
     def ordered_qty(self):
         return self.delivered_qty()
+
+    def deliveries(self):
+        return self.inventorytransaction_set.filter(transaction_type="Delivery")
         
     def delivered_qty(self):
-        return sum(delivery.quantity for delivery in self.inventorytransaction_set.all())
+        return sum(delivery.quantity for delivery in self.deliveries())
         
     def delivery_label(self):
         return " ".join([
@@ -609,8 +612,7 @@ class InventoryItem(models.Model):
         
     def customers(self):
         buyers = []
-        deliveries = self.inventorytransaction_set.all()
-        for delivery in deliveries:
+        for delivery in self.deliveries():
             if delivery.order_item:
                 buyers.append(delivery.order_item.order.customer.short_name)
         buyers = list(set(buyers))
@@ -647,12 +649,51 @@ class InventoryItem(models.Model):
 #class EconomicEventType(models.Model):
 #    name = models.CharField(max_length=255)
 
+class EconomicEventManager(models.Manager):
+    
+    def get_query_set(self):
+        return SubclassingQuerySet(self.model)
+
 class EconomicEvent(models.Model):
     transaction_date = models.DateField()
     from_whom = models.ForeignKey(Party, related_name="given_events")
     to_whom = models.ForeignKey(Party, related_name="taken_events")
     amount = models.DecimalField(max_digits=8, decimal_places=2)
     notes = models.CharField(max_length=64, blank=True)
+    content_type = models.ForeignKey(ContentType,editable=False,null=True)
+
+    #objects = models.Manager()
+    objects = EconomicEventManager()
+
+    def as_leaf_class(self):
+        if self.content_type:
+            content_type = self.content_type
+            model = content_type.model_class()
+            if (model == EconomicEvent):
+                return self
+            return model.objects.get(id=self.id)
+        else:
+            return self
+        
+    def save(self, force_insert=False, force_update=False):
+        if not self.content_type:
+            self.content_type = ContentType.objects.get_for_model(self.__class__)
+        self.save_base(force_insert=False, force_update=False)
+
+    def is_paid(self):
+        answer = False
+        paid = Decimal("0")
+        for duality in self.initiating_dualities.all():
+             paid += duality.amount
+        if paid >= self.amount:
+            answer = True
+        return answer
+
+    def delete_compensation(self):
+        for duality in self.initiating_dualities.all():
+            duality.delete()
+
+
 
 class Duality(models.Model):
     initial_event = models.ForeignKey(EconomicEvent, related_name="initiating_dualities")
@@ -705,7 +746,7 @@ class Order(models.Model):
         total = self.transportation_fee
         for item in items:
             total += item.extended_price()
-            total += item.processing_cost()
+            total += item.service_cost()
         return total.quantize(Decimal('.01'), rounding=ROUND_UP)
     
     def coop_fee(self):
@@ -767,27 +808,26 @@ class OrderItem(models.Model):
             producers.append(tx.inventory_item.producer.short_name)
         return ', '.join(list(set(producers)))
     
-    def processes(self):
-        # todo: replace with new Process stuff
-        processes = []
+    def services(self):
+        svs = []
         try:
             deliveries = self.inventorytransaction_set.all()
             for delivery in deliveries:
-                processes.append(delivery.inventory_item.processing)
+                svs.extend(delivery.services())
         except:
             pass
-        return processes
+        return svs
     
-    def processing_cost(self):
+    def service_cost(self):
         cost = Decimal(0)
         for delivery in self.inventorytransaction_set.all():
-            cost += delivery.processing_cost()
+            cost += delivery.service_cost()
         return cost.quantize(Decimal('.01'))
     
     def processors(self):
         procs = []
-        for process in self.processes():
-            procs.append(process.processor.short_name)
+        for svc in self.services():
+            procs.append(svc.from_whom.short_name)
         procs = list(set(procs))
         return ", ".join(procs)
     
@@ -1065,4 +1105,42 @@ class ServiceTransaction(EconomicEvent):
             self.service_type.name,
             self.from_whom.long_name,
             ])
+
+    def should_be_paid(self):
+        if self.is_paid():
+            return False
+        # todo: shd be recursive for next processes
+        for output in self.process.outputs():
+            for delivery in output.inventory_item.deliveries():
+                if delivery.order_item.order.paid:
+                    return True
+        return False
+
+    def downstream_orders(self):
+        # todo: shd be recursive for next processes
+        orders = []
+        for output in self.process.outputs():
+            for delivery in output.inventory_item.deliveries():
+                orders.append(delivery.order_item.order)
+        return orders
+        
+    def order_string(self):
+        os = ""
+        for order in self.downstream_orders():
+            os = "".join([os, " #", str(order.id), ":", order.customer.short_name])
+        return os
+
+    def delivered_items(self):
+        # todo: shd be recursive for next processes
+        items = []
+        for output in self.process.outputs():
+            items.append(output.inventory_item)
+        return items
+
+    def product_string(self):
+        # todo: can be done better
+        ps = ""
+        for item in self.delivered_items():
+            ps = " ".join([ps, item.product.short_name])
+        return ps
 

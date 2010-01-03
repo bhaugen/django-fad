@@ -99,6 +99,7 @@ class PaymentTransactionForm(forms.Form):
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
+        exclude = ('from_whom', 'notes')
 
 def create_payment_transaction_form(inventory_transaction, pay_all, data=None):
     order = 'None'
@@ -123,32 +124,28 @@ def create_payment_transaction_form(inventory_transaction, pay_all, data=None):
     return the_form
 
 # todo: replace with ServiceTransactions
-def create_processing_payment_form(processing_transaction, pay_all, data=None):
-    order = 'None'
-    
-    #todo: next line is a hack based on PBC rule that each lot of meat is indivisible,
-    # that is, will have only one transaction
-    # and processing with no inventory_transaction have already been filtered out
-    inventory_transaction = processing_transaction.inventory_transaction()
-        
-    if inventory_transaction.order_item:
-        order = ': '.join([str(inventory_transaction.order_item.order.id), inventory_transaction.order_item.order.customer.short_name])
+def create_processing_payment_form(service_transaction, pay_all, data=None):
+   
+    order = service_transaction.order_string()
+
     if pay_all:
         paid = True
     else:
-        paid = not not processing_transaction.payment
-    prefix = "".join(["proc", str(processing_transaction.id)])
+        paid = not not service_transaction.is_paid()
+    prefix = "".join(["proc", str(service_transaction.id)])
     the_form = PaymentTransactionForm(data, prefix=prefix, initial={
-        'transaction_id': processing_transaction.id,
+        'transaction_id': service_transaction.id,
         'transaction_type': 'Processing',
         'order': order,
-        'transaction_date': processing_transaction.process_date,
-        'quantity': inventory_transaction.quantity,
-        'amount_due': processing_transaction.cost,
-        'notes': inventory_transaction.notes,
+        'transaction_date': service_transaction.transaction_date,
+        'quantity': 0,
+        # todo: what shd this be?
+        #'quantity': inventory_transaction.quantity,
+        'amount_due': service_transaction.amount,
+        'notes': service_transaction.notes,
         'paid': paid,
         })
-    the_form.product = inventory_transaction.inventory_item.product.long_name
+    the_form.product = service_transaction.product_string()
     return the_form
 
 # todo: replace with ServiceTransactions
@@ -183,6 +180,7 @@ def create_payment_transaction_forms(producer=None, payment=None, data=None):
     pay_all = True
     if payment:
         pay_all = False
+        # todo: use dualities
         for p in payment.inventorytransaction_set.all():
             form_list.append(create_payment_transaction_form(p, pay_all, data))
 
@@ -190,27 +188,20 @@ def create_payment_transaction_forms(producer=None, payment=None, data=None):
         #for p in payment.processing_set.all():
         #    form_list.append(create_processing_payment_form(p, pay_all, data))
     due1 = InventoryTransaction.objects.filter( 
-        payment=None,
         order_item__order__paid=True,
         inventory_item__producer=producer)
     due2 = InventoryTransaction.objects.filter( 
         transaction_type='Damage',
-        payment=None,
         inventory_item__producer=producer)
     due = itertools.chain(due1, due2)
     for d in due:
         form_list.append(create_payment_transaction_form(d, pay_all, data))
 
-    # todo: replace with ServiceTransactions
-    #due3 = Processing.objects.filter(
-    #    payment=None,
-    #    processor=producer)
-    #for d in due3:
-    #    tx = d.inventory_transaction()
-    #    if tx:
-    #        if tx.order_item:
-    #            if tx.order_item.order.paid:
-    #                form_list.append(create_processing_payment_form(d, pay_all, data))
+    due3 = ServiceTransaction.objects.filter(
+        from_whom=producer)
+    for d in due3:
+        if d.should_be_paid():
+            form_list.append(create_processing_payment_form(d, pay_all, data))
 
     # todo: replace with ServiceTransactions
     due4 = Order.objects.filter(

@@ -57,7 +57,7 @@
 							for(var idx=0;idx<payments.length;idx++)
 							{
 								var payment = payments[idx];
-								var paymentLabel = '#' + payment.pk + ' ' + payment.fields.payment_date + ' $' + payment.fields.amount;
+								var paymentLabel = '#' + payment.pk + ' ' + payment.fields.transaction_date + ' $' + payment.fields.amount;
 								insertOption(selectField, paymentLabel, payment.pk);
 							}
 						}
