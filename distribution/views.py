@@ -913,6 +913,11 @@ def orders_with_deliveries(request, year, month, day):
     return render_to_response('distribution/order_delivery_list.html', {'order_date': thisdate, 'orderitem_list': orderitem_list})
 
 def payment_selection(request):
+    thisdate = current_week()
+    init = {
+        'from_date': thisdate - datetime.timedelta(days=7),
+        'to_date': thisdate + datetime.timedelta(days=5),
+    }
     if request.method == "POST":
         ihform = PaymentSelectionForm(request.POST)  
         if ihform.is_valid():
@@ -927,7 +932,7 @@ def payment_selection(request):
     else:
         #ihform = PaymentSelectionForm(initial={'from_date': thisdate, 'to_date': thisdate })
     #return render_to_response('distribution/payment_selection.html', {'avail_date': thisdate, 'header_form': ihform})
-        ihform = PaymentSelectionForm()
+        ihform = PaymentSelectionForm(initial=init)
     return render_to_response('distribution/payment_selection.html', {'header_form': ihform})
 
 @login_required
