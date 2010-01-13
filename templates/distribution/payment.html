@@ -46,34 +46,34 @@
              <th>Quantity</th>
              <th>Due</th>
         </tr>
-        {% for tx in payment.inventorytransaction_set.all %}
+        {% for tx in payment.paid_inventory_transactions %}
             <tr>
                 <td>{{ tx.transaction_type }}</td>
                 <td>{{ tx.order_item }}</td>
                 <td>{{ tx.inventory_item.product }}</td>
                 <td>{{ tx.transaction_date }}</td>
-                <td style="text-align: right; ">{{ tx.quantity }}</td>
+                <td style="text-align: right; ">{{ tx.amount }}</td>
                 <td style="text-align: right; ">{{ tx.due_to_producer }}</td>
             </tr>
         {% endfor %}
-		{% for tx in payment.processing_set.all %}
+		{% for tx in payment.paid_service_transactions %}
             <tr>
-                <td>Processing</td>
-                <td>{{ tx.inventory_transaction.order_item }}</td>
-                <td>{{ tx.inventory_item.product }}</td>
-                <td>{{ tx.process_date }}</td>
+                <td>{{ tx.service_type }}</td>
+                <td>{{ tx.order_string }}</td>
+                <td>{{ tx.product_string }}</td>
+                <td>{{ tx.transaction_date }}</td>
                 <td style="text-align: right; ">{{ tx.inventory_transaction.quantity }}</td>
-                <td style="text-align: right; ">{{ tx.cost }}</td>
+                <td style="text-align: right; ">{{ tx.amount }}</td>
             </tr>
         {% endfor %}
-		{% for tx in payment.order_set.all %}
+		{% for tx in payment.paid_transportation_transactions %}
             <tr>
-                <td>Order</td>
-                <td>{{ tx }}</td>
-                <td>Transportation</td>
-                <td>{{ tx.order_date }}</td>
+                <td>{{ tx.service_type }}</td>
+                <td>{{ tx.order }}</td>
                 <td>&nbsp;</td>
-                <td style="text-align: right; ">{{ tx.transportation_fee }}</td>
+                <td>{{ tx.transaction_date }}</td>
+                <td>&nbsp;</td>
+                <td style="text-align: right; ">{{ tx.amount }}</td>
             </tr>
         {% endfor %}
     </table>

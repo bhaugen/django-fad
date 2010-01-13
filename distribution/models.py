@@ -47,9 +47,12 @@ def charge_name():
         answer = 'Delivery Charge'
     return answer
 
-def terms():
-    return FoodNetwork.objects.get(pk=1).terms
+def customer_terms():
+    return FoodNetwork.objects.get(pk=1).customer_terms
 
+
+def member_terms():
+    return FoodNetwork.objects.get(pk=1).member_terms
 
 class ProductAndProducers(object):
      def __init__(self, product, qty, price, producers):
@@ -126,6 +129,21 @@ class PartyManager(models.Manager):
                 producers.append(prod)
         return producers
 
+    def all_distributors(self):
+        parties = Party.objects.all()
+        dists = []
+        for party in parties:
+            if isinstance(party.as_leaf_class(), Distributor):
+                dists.append(party)
+        return dists
+
+    def payable_members(self):
+        parties = Party.objects.all().exclude(pk=1)
+        pms = []
+        for party in parties:
+            if not isinstance(party.as_leaf_class(), Customer):
+                pms.append(party)
+        return pms
     
 class Party(models.Model):
     member_id = models.CharField(max_length=12, blank=True)
@@ -178,12 +196,15 @@ class FoodNetwork(Party):
     billing_address = models.CharField(max_length=96, blank=True, null=True, 
             help_text='Enter commas only where you want to split address lines for formatting.')
     billing_email_address = models.EmailField(max_length=96, blank=True, null=True)
-    terms = models.IntegerField(blank=True, null=True,
-        help_text='Net number of days for invoices')
+    customer_terms = models.IntegerField(blank=True, null=True,
+        help_text='Net number of days for customer to pay invoice')
+    member_terms = models.IntegerField(blank=True, null=True,
+        help_text='Net number of days for network to pay member')
     customer_fee = models.DecimalField(max_digits=3, decimal_places=2, 
         help_text='Fee is a decimal fraction, not a percentage - for example, .05 instead of 5%')
     producer_fee = models.DecimalField(max_digits=3, decimal_places=2, 
-        help_text='Fee is a decimal fraction, not a percentage - for example, .05 instead of 5%')    
+        help_text='Fee is a decimal fraction, not a percentage - for example, .05 instead of 5%') 
+    # next 2 fields are obsolete   
     charge = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True,
         help_text='Charge will be added to all orders unless overridden on the Customer')
     charge_name = models.CharField(max_length=32, blank=True, default='Delivery charge')
@@ -327,6 +348,9 @@ class FoodNetwork(Party):
         return items
     
     def all_active_items(self, thisdate = None):
+        # todo: this and dashboard need work
+        # e.g. shows steers with no avail or orders, but some were consumed
+        # delivery column commented out because order-by-lot delivers at same time as ordered
         if not thisdate:
             thisdate = current_week()
         weekstart = thisdate - datetime.timedelta(days=datetime.date.weekday(thisdate))
@@ -408,18 +432,20 @@ class Product(models.Model):
     short_name = models.CharField(max_length=32, unique=True)
     long_name = models.CharField(max_length=64)
     sellable = models.BooleanField(default=True,
-        help_text='Should this product appear in Inventory Update?')
+        help_text='Should this product appear in Order form?')
+    plannable = models.BooleanField(default=True,
+        help_text='Should this product appear in Plan form?')
     is_parent = models.BooleanField(default=False,
         help_text='Should this product appear in parent selections?')
     price = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal(0))
-    fee_override = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True, 
+    customer_fee_override = models.DecimalField(max_digits=3, decimal_places=2, blank=True, null=True, 
         help_text='Enter override as a decimal fraction, not a percentage - for example, .05 instead of 5%. Note: you cannot override to zero here, only on Order Items.')
     pay_producer = models.BooleanField(default=True,
-        help_text='Does the Food Network pay the producer for deliveries of this product, or not?')
+        help_text='If checked, the Food Network pays the producer for issues, deliveries and damages of this product.')
+    pay_producer_on_terms = models.BooleanField(default=True,
+        help_text='If checked, producer paid on member terms. If not, producers paid based on customer order payments. Note: Issues always paid on member terms.')
     expiration_days = models.IntegerField(default=6,
         help_text='Inventory Items (Lots) of this product will expire in this many days.')
-    meat = models.BooleanField(default=False,
-        help_text='Is this a meat product?')
 
     def __unicode__(self):
         return self.long_name
@@ -494,7 +520,7 @@ class Product(models.Model):
         return sum(delivery.quantity for delivery in deliveries)
     
     def decide_fee(self):
-        prod_fee = self.fee_override
+        prod_fee = self.customer_fee_override
         if prod_fee:
             my_fee = prod_fee
         else:
@@ -521,13 +547,21 @@ class Product(models.Model):
                 sellables.append(kid)
         return sellables
 
+    def plannable_children(self):
+        kids = flattened_children(self, Product.objects.all(), [])
+        plannables = []
+        for kid in kids:
+            if kid.plannable:
+                plannables.append(kid)
+        return plannables
+
     class Meta:
         ordering = ('short_name',)
 
 
 class ProductPlan(models.Model):
     producer = models.ForeignKey(Party, related_name="product_plans") 
-    product = models.ForeignKey(Product, limit_choices_to = {'sellable': True})
+    product = models.ForeignKey(Product, limit_choices_to = {'plannable': True})
     from_date = models.DateField()
     to_date = models.DateField()
     quantity = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
@@ -548,7 +582,7 @@ class ProductPlan(models.Model):
 class InventoryItem(models.Model):
     producer = models.ForeignKey(Party, related_name="inventory_items") 
     custodian = models.ForeignKey(Party, blank=True, null=True, related_name="custody_items")
-    product = models.ForeignKey(Product, limit_choices_to = {'sellable': True})
+    product = models.ForeignKey(Product, limit_choices_to = {'plannable': True})
     inventory_date = models.DateField()
     expiration_date = models.DateField()
     planned = models.DecimalField("Ready", max_digits=8, decimal_places=2, default=Decimal('0'))
@@ -588,8 +622,14 @@ class InventoryItem(models.Model):
         return self.inventorytransaction_set.filter(transaction_type="Delivery")
         
     def delivered_qty(self):
-        return sum(delivery.quantity for delivery in self.deliveries())
+        return sum(delivery.amount for delivery in self.deliveries())
+
+    def issues(self):
+        return self.inventorytransaction_set.filter(transaction_type="Issue")
         
+    def issued_qty(self):
+        return sum(delivery.amount for delivery in self.issues())
+
     def delivery_label(self):
         return " ".join([
             self.producer.short_name,
@@ -654,6 +694,22 @@ class EconomicEventManager(models.Manager):
     def get_query_set(self):
         return SubclassingQuerySet(self.model)
 
+    def all_payments(self):
+        events = EconomicEvent.raw_objects.all()
+        payments = []
+        for event in events:
+            if isinstance(event.as_leaf_class(), Payment):
+                payments.append(event)
+        return payments
+
+    def payments_to_party(self, party):
+        events = EconomicEvent.raw_objects.filter(to_whom=party)
+        payments = []
+        for event in events:
+            if isinstance(event.as_leaf_class(), Payment):
+                payments.append(event)
+        return payments
+
 class EconomicEvent(models.Model):
     transaction_date = models.DateField()
     from_whom = models.ForeignKey(Party, related_name="given_events")
@@ -662,7 +718,7 @@ class EconomicEvent(models.Model):
     notes = models.CharField(max_length=64, blank=True)
     content_type = models.ForeignKey(ContentType,editable=False,null=True)
 
-    #objects = models.Manager()
+    raw_objects = models.Manager()
     objects = EconomicEventManager()
 
     def as_leaf_class(self):
@@ -680,14 +736,30 @@ class EconomicEvent(models.Model):
             self.content_type = ContentType.objects.get_for_model(self.__class__)
         self.save_base(force_insert=False, force_update=False)
 
+    def payments(self):
+        if isinstance(self.as_leaf_class(), Payment):
+            return []
+        answer = []
+        for d in self.initiating_dualities.all():
+            answer.append(d.compensating_event.as_leaf_class())
+        return answer
+
     def is_paid(self):
         answer = False
         paid = Decimal("0")
-        for duality in self.initiating_dualities.all():
+        for duality in self.payments():
              paid += duality.amount
         if paid >= self.amount:
             answer = True
         return answer
+
+    def payment_string(self):
+        ps = []
+        for payment in self.payments():
+            ps.append(payment.as_string())
+        ps = list(set(ps))
+        ps_string = ", ".join(ps)
+        return ps_string
 
     def delete_compensation(self):
         for duality in self.initiating_dualities.all():
@@ -702,9 +774,6 @@ class Duality(models.Model):
 
         
 class Payment(EconomicEvent):
-    #paid_to = models.ForeignKey(Party) 
-    #payment_date = models.DateField()
-    #amount = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
     reference = models.CharField(max_length=64, blank=True)
 
     def __unicode__(self):
@@ -717,14 +786,42 @@ class Payment(EconomicEvent):
     class Meta:
         ordering = ('transaction_date',)
 
+    def as_string(self):
+        return self.__unicode__()
+
+    def paid_transactions(self):
+        paid = []
+        for d in self.compensating_dualities.all():
+            paid.append(d.initial_event.as_leaf_class())
+        return paid
+
+    def paid_inventory_transactions(self):
+        paid = []
+        for p in self.paid_transactions():
+            if isinstance(p, InventoryTransaction):
+                paid.append(p)
+        return paid
+
+    def paid_service_transactions(self):
+        paid = []
+        for p in self.paid_transactions():
+            if isinstance(p, ServiceTransaction):
+                paid.append(p)
+        return paid
+
+    def paid_transportation_transactions(self):
+        paid = []
+        for p in self.paid_transactions():
+            if isinstance(p, TransportationTransaction):
+                paid.append(p)
+        return paid
+
 
 class Order(models.Model):
     customer = models.ForeignKey(Customer) 
     order_date = models.DateField()
     distributor = models.ForeignKey(Party, blank=True, null=True, related_name="orders")
-    transportation_fee = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
     paid = models.BooleanField(default=False, verbose_name="Order paid")
-    transportation_payment = models.ForeignKey(Payment, blank=True, null=True)
 
     def __unicode__(self):
         return ' '.join([self.order_date.strftime('%Y-%m-%d'), self.customer.short_name])
@@ -740,10 +837,17 @@ class Order(models.Model):
     
     def charge(self):
         return self.customer.order_charge()
+
+    def transportation_fee(self):
+        try:
+            transportation_tx = TransportationTransaction.objects.get(order=self)
+            return transportation_tx.amount
+        except TransportationTransaction.DoesNotExist:
+            return Decimal("0")
     
     def total_price(self):
         items = self.orderitem_set.all()
-        total = self.transportation_fee
+        total = self.transportation_fee()
         for item in items:
             total += item.extended_price()
             total += item.service_cost()
@@ -759,11 +863,11 @@ class Order(models.Model):
         return self.total_price() + self.coop_fee()
     
     def payment_due_date(self):
-        term_days = terms()
+        term_days = customer_terms()
         return self.order_date + datetime.timedelta(days=term_days)
     
     def display_transportation_fee(self):
-        return self.transportation_fee.quantize(Decimal('.01'), rounding=ROUND_UP)
+        return self.transportation_fee().quantize(Decimal('.01'), rounding=ROUND_UP)
     
     def coop_fee_label(self):
         fee = int(customer_fee() * 100)
@@ -879,6 +983,10 @@ class OrderItem(models.Model):
 
 class ServiceType(models.Model):
     name = models.CharField(max_length=64)
+    invoiced_separately = models.BooleanField(default=False,
+        help_text='If checked, the cost of services appear as separate line items on invoices. If not, they are included in the prices of resulting products.')
+    pay_provider_on_terms = models.BooleanField(default=True,
+        help_text='If checked, the Food Network pays the service provider on member terms. If not, the provider payment is based on customer order payment.')
 
     def __unicode__(self):
         return self.name
@@ -978,14 +1086,28 @@ class Process(models.Model):
             cost += s.amount
         return cost
 
+    def unit_service_cost(self):
+        """ Allocating the same cost to each output unit 
+        """
+        cost = self.service_cost()
+        output = sum(op.amount for op in self.outputs())
+        return cost / output
+
     def cumulative_service_cost(self):
         cost = self.service_cost()
         for proc in self.previous_processes_recursive():
             cost += proc.service_cost()
         return cost
 
+    def cumulative_unit_service_cost(self):
+        """ Allocating the same cost to each output unit 
+        """
+        cost = self.cumulative_service_cost()
+        output = sum(op.amount for op in self.outputs())
+        return cost / output
+
     def cumulative_services(self):
-        svs = self.services()
+        svs = list(self.services())
         for proc in self.previous_processes_recursive():
             svs.extend(proc.services())
         return svs
@@ -1015,10 +1137,6 @@ class InventoryTransaction(EconomicEvent):
     inventory_item = models.ForeignKey(InventoryItem)
     process = models.ForeignKey(Process, blank=True, null=True, related_name='inventory_transactions')
     order_item = models.ForeignKey(OrderItem, blank=True, null=True)
-    #quantity = models.DecimalField(max_digits=8, decimal_places=2)
-    #todo: remove pay_producer and sub duality for payment
-    #pay_producer = models.BooleanField(default=True)
-    #payment = models.ForeignKey(Payment, blank=True, null=True)
 
     def __unicode__(self):
         if self.order_item:
@@ -1066,25 +1184,41 @@ class InventoryTransaction(EconomicEvent):
             return Decimal(0)
         if not self.inventory_item.product.pay_producer:
             return Decimal(0)
-        if not self.pay_producer:
-            return Decimal(0)
         
         fee = producer_fee()
         unit_price = self.inventory_item.product.price
         return (unit_price * self.amount * (1 - fee)).quantize(Decimal('.01'), rounding=ROUND_UP)
+
+    def should_be_paid(self):
+        if not self.due_to_producer():
+            return False
+        if self.is_paid():
+            return False
+        if self.inventory_item.product.pay_producer_on_terms:
+            term_days = member_terms()
+            due_date = self.transaction_date + datetime.timedelta(days=term_days)
+            if date.today() >= due_date:
+                return True
+            else:
+                return False
+        else:
+            if self.order_item:
+                return self.order_item.order.paid
+            else:
+                return False
     
     def service_cost(self):
         cost = Decimal(0)
         item = self.inventory_item
         for tx in item.inventorytransaction_set.filter(transaction_type="Production"):
-            cost += tx.process.cumulative_service_cost()
+            cost += self.amount * tx.process.cumulative_unit_service_cost()
         return cost
 
     def services(self):
         svs = []
         item = self.inventory_item
         for tx in item.inventorytransaction_set.filter(transaction_type="Production"):
-            svs.extend(tx.process.cumulative_services())
+            svs.extend(list(tx.process.cumulative_services()))
         return svs
 
     class Meta:
@@ -1092,13 +1226,9 @@ class InventoryTransaction(EconomicEvent):
 
 
 class ServiceTransaction(EconomicEvent):
-    #todo: will transaction_type work for service_type?
-    # no - ServiceType is actually a ResourceType
     service_type = models.ForeignKey(ServiceType)
     process = models.ForeignKey(Process, related_name='service_transactions')
-    #cost = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
-    #todo: sub duality for payment
-    payment = models.ForeignKey(Payment, blank=True, null=True)
+
 
     def __unicode__(self):
         return " ".join([
@@ -1106,15 +1236,26 @@ class ServiceTransaction(EconomicEvent):
             self.from_whom.long_name,
             ])
 
-    def should_be_paid(self):
-        if self.is_paid():
-            return False
-        # todo: shd be recursive for next processes
+    def order_paid(self):
+        # todo: shd be recursive for next processes?
         for output in self.process.outputs():
             for delivery in output.inventory_item.deliveries():
                 if delivery.order_item.order.paid:
                     return True
         return False
+
+    def should_be_paid(self):
+        if self.is_paid():
+            return False
+        if self.service_type.pay_provider_on_terms:
+            term_days = member_terms()
+            due_date = self.transaction_date + datetime.timedelta(days=term_days)
+            if datetime.date.today() >= due_date:
+                return True
+            else:
+                return False
+        else:
+            return self.order_paid()
 
     def downstream_orders(self):
         # todo: shd be recursive for next processes
@@ -1125,10 +1266,12 @@ class ServiceTransaction(EconomicEvent):
         return orders
         
     def order_string(self):
-        os = ""
+        os = []
         for order in self.downstream_orders():
-            os = "".join([os, " #", str(order.id), ":", order.customer.short_name])
-        return os
+            os.append("".join([" #", str(order.id), ":", order.customer.short_name]))
+        os = list(set(os))
+        os_string = ", ".join(os)
+        return os_string
 
     def delivered_items(self):
         # todo: shd be recursive for next processes
@@ -1138,9 +1281,34 @@ class ServiceTransaction(EconomicEvent):
         return items
 
     def product_string(self):
-        # todo: can be done better
-        ps = ""
+        ps = []
         for item in self.delivered_items():
-            ps = " ".join([ps, item.product.short_name])
-        return ps
+            ps.append(item.product.short_name)
+        ps = list(set(ps))
+        ps_string = ", ".join(ps)
+        return ps_string
+
+
+class TransportationTransaction(EconomicEvent):
+    service_type = models.ForeignKey(ServiceType)
+    order = models.ForeignKey(Order)
+
+    def __unicode__(self):
+        return " ".join([
+            self.service_type.name,
+            self.from_whom.long_name,
+            "for",
+            unicode(self.order),
+            ])
+
+    def save(self, force_insert=False, force_update=False):
+        if not self.pk:
+            tt, created = ServiceType.objects.get_or_create(name="Transportation")
+            self.service_type = tt
+        super(TransportationTransaction, self).save(force_insert, force_update)
+
+    def should_be_paid(self):
+        if self.is_paid():
+            return False
+        return self.order.paid
 

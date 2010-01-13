@@ -37,8 +37,8 @@ admin.site.register(Customer, CustomerAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('short_name', 'long_name', 'parent', 'price', 'fee_override', 'pay_producer', 'expiration_days', 'meat')
-    list_filter = ['meat', 'parent']
+    list_display = ('short_name', 'long_name', 'parent', 'price', 'expiration_days', )
+    list_filter = ['parent']
     search_fields = ['short_name', 'long_name']
     
 admin.site.register(Product, ProductAdmin)
@@ -50,10 +50,6 @@ class ProductPlanAdmin(admin.ModelAdmin):
     date_hierarchy = 'from_date'
     
 admin.site.register(ProductPlan, ProductPlanAdmin)
-
-# todo: replace with ServiceTransactions?
-#class ProcessingInline(admin.TabularInline):
-#    model = Processing
 
 
 class InventoryItemAdmin(admin.ModelAdmin):
@@ -68,19 +64,11 @@ class InventoryItemAdmin(admin.ModelAdmin):
 admin.site.register(InventoryItem, InventoryItemAdmin)
 
 
-#class ProcessingAdmin(admin.ModelAdmin):
-#    list_display = ('inventory_item', 'process_date', 'processor', 'cost', 'payment')
-#    list_filter = ['processor', 'inventory_item']
-#    date_hierarchy = 'process_date'
-  
-#admin.site.register(Processing, ProcessingAdmin)
-
-
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'order_date', 'customer', 'distributor', 'transportation_fee', 'paid', 'transportation_payment')
+    list_display = ('id', 'order_date', 'customer', 'distributor', 'paid', )
     ordering = ('order_date',)
     list_filter = ['customer', 'paid']
     date_hierarchy = 'order_date'
@@ -136,4 +124,10 @@ class ServiceTransactionAdmin(admin.ModelAdmin):
     list_display = ('service_type', 'process', 'from_whom', 'to_whom', 'transaction_date', 'amount')
   
 admin.site.register(ServiceTransaction, ServiceTransactionAdmin)
+
+
+class TransportationTransactionAdmin(admin.ModelAdmin):
+    list_display = ('service_type', 'order', 'from_whom', 'to_whom', 'transaction_date', 'amount')
+  
+admin.site.register(TransportationTransaction, TransportationTransactionAdmin)
 

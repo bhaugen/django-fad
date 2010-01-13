@@ -81,12 +81,12 @@ class PaymentUpdateSelectionForm(forms.Form):
     payment = forms.ChoiceField(required=False)
     def __init__(self, *args, **kwargs):
         super(PaymentUpdateSelectionForm, self).__init__(*args, **kwargs)
-        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.objects.all().exclude(pk=1)]
+        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.subclass_objects.payable_members()]
         self.fields['payment'].choices = [('', 'New')] + [(payment.id, payment) for payment in Payment.objects.all()]
 
 class PaymentTransactionForm(forms.Form):
     transaction_id = forms.CharField(widget=forms.HiddenInput)
-    transaction_type=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '8'}))
+    transaction_type=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '10'}))
     order=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input'}))
     #product=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input'}))
     transaction_date=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '8'}))
@@ -108,14 +108,14 @@ def create_payment_transaction_form(inventory_transaction, pay_all, data=None):
     if pay_all:
         paid = True
     else:
-        paid = not not inventory_transaction.payment
+        paid = not not inventory_transaction.is_paid()
     the_form = PaymentTransactionForm(data, prefix=inventory_transaction.id, initial={
         'transaction_id': inventory_transaction.id,
         'transaction_type': inventory_transaction.transaction_type,
         'order': order,
         #'product': inventory_transaction.inventory_item.product.long_name, 
         'transaction_date': inventory_transaction.transaction_date,
-        'quantity': inventory_transaction.quantity,
+        'quantity': inventory_transaction.amount,
         'amount_due': inventory_transaction.due_to_producer(),
         'notes': inventory_transaction.notes,
         'paid': paid,
@@ -138,7 +138,7 @@ def create_processing_payment_form(service_transaction, pay_all, data=None):
         'transaction_type': 'Processing',
         'order': order,
         'transaction_date': service_transaction.transaction_date,
-        'quantity': 0,
+        'quantity': "",
         # todo: what shd this be?
         #'quantity': inventory_transaction.quantity,
         'amount_due': service_transaction.amount,
@@ -149,24 +149,24 @@ def create_processing_payment_form(service_transaction, pay_all, data=None):
     return the_form
 
 # todo: replace with ServiceTransactions
-def create_transportation_payment_form(order, pay_all, data=None):
+def create_transportation_payment_form(transportation_tx, pay_all, data=None):
 
     if pay_all:
         paid = True
     else:
-        paid = not not order.payment
-    prefix = "".join(["order", str(order.id)])
+        paid = not not transportation_tx.is_paid()
+    prefix = "".join(["transport", str(transportation_tx.id)])
     the_form = PaymentTransactionForm(data, prefix=prefix, initial={
-        'transaction_id': order.id,
-        'transaction_type': 'Order',
-        'order': order,
-        'transaction_date': order.order_date,
+        'transaction_id': transportation_tx.id,
+        'transaction_type': transportation_tx.service_type.name,
+        'order': transportation_tx.order,
+        'transaction_date': transportation_tx.transaction_date,
         'quantity': "",
-        'amount_due': order.transportation_fee,
+        'amount_due': transportation_tx.amount,
         'notes': "",
         'paid': paid,
         })
-    the_form.product = "Transportation"
+    the_form.product = ""
     return the_form
 
 
@@ -180,13 +180,13 @@ def create_payment_transaction_forms(producer=None, payment=None, data=None):
     pay_all = True
     if payment:
         pay_all = False
-        # todo: use dualities
-        for p in payment.inventorytransaction_set.all():
+
+        for p in payment.paid_inventory_transactions():
             form_list.append(create_payment_transaction_form(p, pay_all, data))
 
-        # todo: replace with ServiceTransactions
-        #for p in payment.processing_set.all():
-        #    form_list.append(create_processing_payment_form(p, pay_all, data))
+        for p in payment.paid_service_transactions():
+            form_list.append(create_processing_payment_form(p, pay_all, data))
+
     due1 = InventoryTransaction.objects.filter( 
         order_item__order__paid=True,
         inventory_item__producer=producer)
@@ -195,7 +195,8 @@ def create_payment_transaction_forms(producer=None, payment=None, data=None):
         inventory_item__producer=producer)
     due = itertools.chain(due1, due2)
     for d in due:
-        form_list.append(create_payment_transaction_form(d, pay_all, data))
+        if d.should_be_paid():
+            form_list.append(create_payment_transaction_form(d, pay_all, data))
 
     due3 = ServiceTransaction.objects.filter(
         from_whom=producer)
@@ -203,12 +204,9 @@ def create_payment_transaction_forms(producer=None, payment=None, data=None):
         if d.should_be_paid():
             form_list.append(create_processing_payment_form(d, pay_all, data))
 
-    # todo: replace with ServiceTransactions
-    due4 = Order.objects.filter(
-        paid=True,
-        transportation_payment=None,
-        transportation_fee__gt=Decimal(0),
-        distributor=producer)
+    due4 = TransportationTransaction.objects.filter(
+        order__paid=True,
+        from_whom=producer)
     for d in due4:
         form_list.append(create_transportation_payment_form(d, pay_all, data))
     return form_list
@@ -267,7 +265,7 @@ class PlanSelectionForm(forms.Form):
     producer = forms.ChoiceField()
     def __init__(self, *args, **kwargs):
         super(PlanSelectionForm, self).__init__(*args, **kwargs)
-        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.objects.all().exclude(pk=1)]
+        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Producer.objects.all()]
 
         
 class PlanForm(forms.ModelForm):
@@ -282,10 +280,11 @@ class PlanForm(forms.ModelForm):
         model = ProductPlan
         exclude = ('producer', 'product')
         
-    def __init__(self, *args, **kwargs):
+    def __init__(self, producer, *args, **kwargs):
         super(PlanForm, self).__init__(*args, **kwargs)
-        sublist = list(Party.subclass_objects.all().exclude(pk=1))
-        sublist.sort(lambda x, y: cmp(y.__class__, x.__class__))
+        sublist = list(Distributor.objects.all())
+        sublist.append(producer)
+        #sublist.sort(lambda x, y: cmp(y.__class__, x.__class__))
         self.fields['distributor'].choices = [(party.id, party.short_name) for party in sublist]
         
 def create_plan_forms(producer, data=None):
@@ -293,7 +292,7 @@ def create_plan_forms(producer, data=None):
     item_dict = {}
     for item in items:
         item_dict[item.product.id] = item
-    prods = list(Product.objects.filter(sellable=True))
+    prods = list(Product.objects.filter(plannable=True))
     for prod in prods:
         prod.parents = prod.parent_string()
     prods.sort(lambda x, y: cmp(x.parents, y.parents))
@@ -304,7 +303,7 @@ def create_plan_forms(producer, data=None):
         except KeyError:
             item = False
         if item:
-            this_form = PlanForm(data, prefix=prod.short_name, initial={
+            this_form = PlanForm(producer=producer, data=data, prefix=prod.short_name, initial={
                 'item_id': item.id,
                 'parents': prod.parents, 
                 'prodname': prod.short_name,
@@ -313,7 +312,7 @@ def create_plan_forms(producer, data=None):
                 'quantity': item.quantity,
                 'distributor': item.distributor.id })
         else:
-            this_form = PlanForm(data, prefix=prod.short_name, initial={
+            this_form = PlanForm(producer=producer, data=data, prefix=prod.short_name, initial={
                 'parents': prod.parents, 
                 'prodname': prod.short_name, 
                 'from_date': datetime.date.today(),
@@ -444,7 +443,7 @@ class DeliveryForm(forms.ModelForm):
     quantity = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '8'}))
     class Meta:
         model = InventoryTransaction
-        exclude = ('order_item', 'transaction_type', 'transaction_date', 'pay_producer', 'notes')
+        exclude = ('order_item', 'transaction_type', 'transaction_date', 'notes')
 
 def create_delivery_forms(thisdate, customer, data=None):
     form_list = []
@@ -516,15 +515,24 @@ class OrderSelectionForm(forms.Form):
 
 
 class OrderForm(forms.ModelForm):
+    transportation_fee = forms.DecimalField(widget=forms.TextInput(attrs={'size': '8'}))
+
     class Meta:
         model = Order
         exclude = ('customer', 'order_date')
         
-    def __init__(self, *args, **kwargs):
+    def __init__(self, order=None, *args, **kwargs):
         super(OrderForm, self).__init__(*args, **kwargs)
-        sublist = list(Party.subclass_objects.all().exclude(pk=1))
-        sublist.sort(lambda x, y: cmp(y.__class__, x.__class__))
-        self.fields['distributor'].choices = [(party.id, party.short_name) for party in sublist]
+        #sublist = list(Party.subclass_objects.all().exclude(pk=1))
+        #sublist.sort(lambda x, y: cmp(y.__class__, x.__class__))
+        self.fields['distributor'].choices = [(party.id, party.short_name) for party in Party.subclass_objects.all_distributors()]
+        #import pdb; pdb.set_trace()
+        if order:
+            try:
+                transportation_tx = TransportationTransaction.objects.get(order=order)
+                self.initial['transportation_fee'] = transportation_tx.amount
+            except TransportationTransaction.DoesNotExist:
+                pass
 
 
 class OrderItemForm(forms.ModelForm):
@@ -627,6 +635,7 @@ class InputLotCreationForm(forms.ModelForm):
 
     def __init__(self, input_types, *args, **kwargs):
         super(InputLotCreationForm, self).__init__(*args, **kwargs)
+        #import pdb; pdb.set_trace()
         self.fields['product'].choices = [(prod.id, prod.long_name) for prod in input_types]
         # todo: shd be producers for input_types
         self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.subclass_objects.planned_producers()]
@@ -673,6 +682,11 @@ class OutputLotUpdateForm(forms.Form):
 class ProcessServiceForm(forms.ModelForm):
     amount = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
     
+    def __init__(self, *args, **kwargs):
+        super(ProcessServiceForm, self).__init__(*args, **kwargs)
+        # todo: shd be producers for output_types
+        self.fields['from_whom'].choices = [('', '----------')] + [(proc.id, proc.short_name) for proc in Processor.objects.all()]
+
     class Meta:
         model = ServiceTransaction
         exclude = ('process', 'to_whom', 'transaction_date', 'payment', 'notes')

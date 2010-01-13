@@ -42,12 +42,12 @@
 			        <td>{{ delivery.order_item.order.paid }}</td>
 			        <td>{{ delivery.order_item.product }} </td>
 			        <td>{{ delivery.transaction_date }}</td>
-			        <td style="text-align: right; ">{{ delivery.quantity }}</td>
+			        <td style="text-align: right; ">{{ delivery.amount }}</td>
 			        <td style="text-align: right; ">{{ delivery.order_item.unit_price }}</td>
 			        <td style="text-align: right; ">{{ delivery.order_item.extended_producer_fee }}</td>
 			        <td style="text-align: right; ">{{ delivery.due_to_producer }}</td>
 					{% if show_payments %}
-						<td> {{ delivery.payment }} </td>
+						<td> {{ delivery.payment_string }} </td>
 					{% endif %}
 			    </tr>
 				{% endfor %}
@@ -69,7 +69,6 @@
              <th>Buyer Paid?</th>
              <th>Item</th>
              <th>Date</th>
-             <th>Quantity</th>
              <th>Due</th>
 			{% if show_payments %}
 				<th>Payment</th>
@@ -81,21 +80,19 @@
 			    <tr>
 			        <td>{{ producer }}</td>
 			        <td>
-						{{ process.inventory_transaction.order_item.order.customer }}: 
-						{{ process.inventory_transaction.order_item.order.id }}
+						{{ process.order_string }}: 
 					</td>
-			        <td>{{ process.inventory_transaction.order_item.order.paid }}</td>
-			        <td>{{ process.inventory_item.product }} </td>
-			        <td>{{ process.process_date }}</td>
-			        <td style="text-align: right; ">{{ process.inventory_item.planned }}</td>
-			        <td style="text-align: right; ">{{ process.cost }}</td>
+			        <td>{{ process.order_paid }}</td>
+			        <td>{{ process.product_string }} </td>
+			        <td>{{ process.transaction_date }}</td>
+			        <td style="text-align: right; ">{{ process.amount }}</td>
 					{% if show_payments %}
-						<td> {{ process.payment }} </td>
+						<td> {{ process.payment_string }} </td>
 					{% endif %}
 			    </tr>
 				{% endfor %}
 				<tr>
-					<td class="read-only-td" colspan="6" style="text-align: right; ">
+					<td class="read-only-td" colspan="5" style="text-align: right; ">
 						<b>Total due to {{ producer }} from processing:</b>
 					</td>
 					<td  style="text-align: right; " ><b>{{ producer.process_total_due }}</b></td>
@@ -118,18 +115,18 @@
         </tr>
 		{% for producer in producers %}
 			{% if producer.transportations %}
-				{% for order in producer.transportations %}
+				{% for tx in producer.transportations %}
 			    <tr>
 			        <td>{{ producer }}</td>
 			        <td>
-						{{ order.customer }}: 
-						{{ order.id }}
+						{{ tx.order.customer }}: 
+						{{ tx.order.id }}
 					</td>
-			        <td>{{ order.paid }}</td>
-			        <td>{{ order.order_date }}</td>
-			        <td style="text-align: right; ">{{ order.transportation_fee }}</td>
+			        <td>{{ tx.order.paid }}</td>
+			        <td>{{ tx.order.order_date }}</td>
+			        <td style="text-align: right; ">{{ tx.amount }}</td>
 					{% if show_payments %}
-						<td> {{ order.transportation_payment }} </td>
+						<td> {{ tx.payment_string }} </td>
 					{% endif %}
 			    </tr>
 				{% endfor %}

@@ -67,8 +67,9 @@
 		        <th>Custodian</th>
 		        <th>Lot</th>		
 		        <th>Avail</th>
+		        <th>Processed</th>
 		        <th>Ordered</th>
-				<th>Delivered</th>
+				<!--<th>Delivered</th>-->
 				<th>Buyers</th>
 		    </tr>
 		    {% for item in item_list %}
@@ -80,8 +81,9 @@
 					{% endif %}
 					<td>{{ item.lot_id }}</td>
 					<td>{{ item.avail_qty }}</td>
+					<td>{{ item.issued_qty }}</td>
 					<td>{{ item.ordered_qty }}</td>
-					<td>{{ item.delivered_qty }}</td>
+					<!--<td>{{ item.delivered_qty }}</td>-->
 					<td>{{ item.customers }}</td>
 		        </tr>
 		    {% endfor %}
