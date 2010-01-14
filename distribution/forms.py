@@ -116,7 +116,7 @@ def create_payment_transaction_form(inventory_transaction, pay_all, data=None):
         #'product': inventory_transaction.inventory_item.product.long_name, 
         'transaction_date': inventory_transaction.transaction_date,
         'quantity': inventory_transaction.amount,
-        'amount_due': inventory_transaction.due_to_producer(),
+        'amount_due': inventory_transaction.due_to_member(),
         'notes': inventory_transaction.notes,
         'paid': paid,
         })
@@ -669,6 +669,7 @@ class OutputLotCreationFormsetForm(forms.ModelForm):
         super(OutputLotCreationFormsetForm, self).__init__(*args, **kwargs)
         # todo: shd be producers for output_types
         self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.subclass_objects.planned_producers()]
+        self.fields['custodian'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.subclass_objects.possible_custodians()]
 
     class Meta:
         model = InventoryItem

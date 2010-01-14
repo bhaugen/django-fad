@@ -144,6 +144,14 @@ class PartyManager(models.Manager):
             if not isinstance(party.as_leaf_class(), Customer):
                 pms.append(party)
         return pms
+
+    def possible_custodians(self):
+        parties = Party.objects.all().exclude(pk=1)
+        pcs = []
+        for party in parties:
+            if isinstance(party.as_leaf_class(), Processor) or isinstance(party.as_leaf_class(), Distributor):
+                pcs.append(party)
+        return pcs
     
 class Party(models.Model):
     member_id = models.CharField(max_length=12, blank=True)
@@ -740,18 +748,22 @@ class EconomicEvent(models.Model):
         if isinstance(self.as_leaf_class(), Payment):
             return []
         answer = []
-        for d in self.initiating_dualities.all():
-            answer.append(d.compensating_event.as_leaf_class())
+        for d in self.transaction_payments.all():
+            answer.append(d.payment)
         return answer
 
-    def is_paid(self):
+    def paid_amount(self):
         answer = False
         paid = Decimal("0")
-        for duality in self.payments():
-             paid += duality.amount
-        if paid >= self.amount:
-            answer = True
-        return answer
+        for payment in self.transaction_payments.all():
+             paid += payment.amount_paid
+        return paid.quantize(Decimal('.01'), rounding=ROUND_UP)
+
+    def due_to_member(self):
+        return self.as_leaf_class().due_to_member()
+
+    def is_paid(self):
+        return self.paid_amount() >= self.due_to_member()
 
     def payment_string(self):
         ps = []
@@ -761,16 +773,9 @@ class EconomicEvent(models.Model):
         ps_string = ", ".join(ps)
         return ps_string
 
-    def delete_compensation(self):
-        for duality in self.initiating_dualities.all():
-            duality.delete()
-
-
-
-class Duality(models.Model):
-    initial_event = models.ForeignKey(EconomicEvent, related_name="initiating_dualities")
-    compensating_event = models.ForeignKey(EconomicEvent, related_name="compensating_dualities")
-    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    def delete_payments(self):
+        for tp in self.transaction_payments.all():
+            tp.delete()
 
         
 class Payment(EconomicEvent):
@@ -791,7 +796,7 @@ class Payment(EconomicEvent):
 
     def paid_transactions(self):
         paid = []
-        for d in self.compensating_dualities.all():
+        for d in self.paid_events.all():
             paid.append(d.initial_event.as_leaf_class())
         return paid
 
@@ -815,6 +820,15 @@ class Payment(EconomicEvent):
             if isinstance(p, TransportationTransaction):
                 paid.append(p)
         return paid
+
+
+class TransactionPayment(models.Model):
+    """ In REA terms, this is a Duality
+        but always assuming money in payment.
+    """
+    paid_event = models.ForeignKey(EconomicEvent, related_name="transaction_payments")
+    payment = models.ForeignKey(Payment, related_name="paid_events")
+    amount_paid = models.DecimalField(max_digits=8, decimal_places=2)
 
 
 class Order(models.Model):
@@ -1179,7 +1193,7 @@ class InventoryTransaction(EconomicEvent):
     def inventory_date(self):
         return self.inventory_item.inventory_date
     
-    def due_to_producer(self):
+    def due_to_member(self):
         if self.transaction_type is 'Reject':
             return Decimal(0)
         if not self.inventory_item.product.pay_producer:
@@ -1190,7 +1204,7 @@ class InventoryTransaction(EconomicEvent):
         return (unit_price * self.amount * (1 - fee)).quantize(Decimal('.01'), rounding=ROUND_UP)
 
     def should_be_paid(self):
-        if not self.due_to_producer():
+        if not self.due_to_member():
             return False
         if self.is_paid():
             return False
@@ -1288,6 +1302,9 @@ class ServiceTransaction(EconomicEvent):
         ps_string = ", ".join(ps)
         return ps_string
 
+    def due_to_member(self):
+        return self.amount.quantize(Decimal('.01'), rounding=ROUND_UP)
+
 
 class TransportationTransaction(EconomicEvent):
     service_type = models.ForeignKey(ServiceType)
@@ -1311,4 +1328,7 @@ class TransportationTransaction(EconomicEvent):
         if self.is_paid():
             return False
         return self.order.paid
+
+    def due_to_member(self):
+        return self.amount.quantize(Decimal('.01'), rounding=ROUND_UP)
 

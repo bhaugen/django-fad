@@ -1144,9 +1144,9 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
     producer.transportations = transportations
 
     for delivery in deliveries:
-        total_due += delivery.due_to_producer()
+        total_due += delivery.due_to_member()
     for damage in damaged:
-        total_due += damage.due_to_producer()
+        total_due += damage.due_to_member()
 
     # todo: replace with ServiceTransactions
     #for proc in processings:
@@ -1282,58 +1282,79 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
     # Total
     for prod in delivery_producers:
         prod_deliveries = delivery_producers[prod]
-        delivery_total_due = 0
-        grand_total_due = 0
+        delivery_total_due = Decimal("0")
+        delivery_total_paid = Decimal("0")
+        grand_total_due = Decimal("0")
+        grand_total_paid = Decimal("0")
         for delivery in prod_deliveries:
-            due_to_producer = delivery.due_to_producer()
-            delivery_total_due += due_to_producer
-            grand_total_due += due_to_producer
+            due_to_member = delivery.due_to_member()
+            delivery_total_due += due_to_member
+            grand_total_due += due_to_member
+            delivery_total_paid += delivery.paid_amount()
+            grand_total_paid += delivery.paid_amount()
         if grand_total_due > 0:
             producer = prod
             producer.delivery_total_due = delivery_total_due
+            producer.delivery_total_paid = delivery_total_paid
             producer.grand_total_due = grand_total_due
+            producer.grand_total_paid = grand_total_paid
             producer.deliveries = prod_deliveries
             producer_list.append(producer)
     for prod in processors:
         prod_processes = processors[prod]
-        process_total_due = 0
+        process_total_due = Decimal("0")
+        process_total_paid = Decimal("0")
         for process in prod_processes:
-            due_to_producer = process.amount
-            process_total_due += due_to_producer
+            process_total_due += process.due_to_member()
+            process_total_paid += process.paid_amount()
         if process_total_due > 0:
             producer = prod
             producer.process_total_due = process_total_due
+            producer.process_total_paid = process_total_paid
             try:
                 grand_total_due = producer.grand_total_due
+                grand_total_paid = producer.grand_total_paid
             except:
-                grand_total_due = 0
+                grand_total_due = Decimal("0")
+                grand_total_paid = Decimal("0")
             grand_total_due += process_total_due
+            grand_total_paid += process_total_paid
             producer.grand_total_due = grand_total_due
+            producer.grand_total_paid = grand_total_paid
             producer.processes = prod_processes
             producer_list.append(producer)
     for dist in transporters:
         trans_tx = transporters[dist]
-        transportation_total_due = 0
+        transportation_total_due = Decimal("0")
+        transportation_total_paid = Decimal("0")
         for tx in trans_tx:
-            due_to_producer = tx.amount
-            transportation_total_due += due_to_producer
+            due_to_member = tx.due_to_member()
+            transportation_total_due += due_to_member
+            transportation_total_paid += tx.paid_amount()
         if transportation_total_due > 0:
             producer = dist
             producer.transportation_total_due = transportation_total_due
+            producer.transportation_total_paid = transportation_total_paid
             try:
                 grand_total_due = producer.grand_total_due
+                grand_total_paid = producer.grand_total_paid
             except:
-                grand_total_due = 0
+                grand_total_due = Decimal("0")
+                grand_total_paid = Decimal("0")
             grand_total_due += transportation_total_due
+            grand_total_paid += transportation_total_paid
             producer.grand_total_due = grand_total_due
+            producer.grand_total_paid = grand_total_paid
             producer.transportations = trans_tx
             producer_list.append(producer)
     for prod in damage_producers:
         prod_damages = damage_producers[prod]
-        damage_total_due = 0
+        damage_total_due = Decimal("0")
+        damage_total_paid = Decimal("0")
         for damage in prod_damages: 
-            due_to_producer = damage.due_to_producer()
-            damage_total_due += due_to_producer
+            due_to_member = damage.due_to_member()
+            damage_total_due += due_to_member
+            damage_total_paid += tx.paid_amount()
         if damage_total_due > 0:
             producer = prod # correct?
             if producer in producer_list:
@@ -1341,9 +1362,13 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
             else:
                 producer_list.append(producer)
             producer.damage_total_due = damage_total_due
+            producer.damage_total_paid = damage_total_paid
             grand_total_due = producer.grand_total_due if producer.grand_total_due else 0
+            grand_total_paid = producer.grand_total_paid if producer.grand_total_paid else 0
             grand_total_due += damage_total_due
+            grand_total_paid += damage_total_paid
             producer.grand_total_due = grand_total_due
+            producer.grand_total_paid = grand_total_paid
             producer.damaged = prod_damages
     for prod in reject_producers:
         producer = prod
@@ -1418,13 +1443,13 @@ def payment_update(request, producer_id, payment_id):
                 else:
                     tx = InventoryTransaction.objects.get(pk=tx_id)
                 if paid:
-                    # todo: assuming here that payments always pay the full tx.amount
+                    # todo: assuming here that payments always pay the full tx.due_to_member
                     if not tx.is_paid():
-                        duality = Duality(
-                            initial_event = tx,
-                            compensating_event = the_payment,
-                            amount = tx.amount)
-                        duality.save()
+                        tp = TransactionPayment(
+                            paid_event = tx,
+                            payment = the_payment,
+                            amount_paid = tx.due_to_member())
+                        tp.save()
                 else:
                     tx.delete_compensation()
             return HttpResponseRedirect('/%s/%s/'
@@ -1514,7 +1539,7 @@ def send_email(request):
         if email_form.is_valid():
             data = email_form.cleaned_data
             from_email = data["email_address"]
-            subject = data["subject"]
+            subject = " ".join(["[Food Accounting]", data["subject"]])
             message = data["message"]
             send_mail(subject, message, from_email, ["bob.haugen@gmail.com",])      
             return HttpResponseRedirect(reverse("email_sent"))
@@ -1531,7 +1556,7 @@ def send_ga_email(request):
         if email_form.is_valid():
             data = email_form.cleaned_data
             from_email = data["email_address"]
-            subject = data["subject"]
+            subject = " ".join(["[Group Accounting]", data["subject"]])
             message = data["message"]
             send_mail(subject, message, from_email, ["bob.haugen@gmail.com",])      
             return HttpResponseRedirect(reverse("ga_email_sent"))
