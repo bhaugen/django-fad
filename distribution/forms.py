@@ -253,7 +253,7 @@ class PaymentSelectionForm(forms.Form):
                                                ])
     def __init__(self, *args, **kwargs):
         super(PaymentSelectionForm, self).__init__(*args, **kwargs)
-        self.fields['producer'].choices = [('0', 'All')] + [(prod.id, prod.short_name) for prod in Party.objects.all().exclude(pk=1)]
+        self.fields['producer'].choices = [('0', 'All')] + [(prod.id, prod.short_name) for prod in Party.subclass_objects.payable_members()]
         
 class StatementSelectionForm(forms.Form):
     from_date = forms.DateField(
@@ -664,6 +664,9 @@ class OutputLotCreationForm(forms.ModelForm):
 
 class OutputLotCreationFormsetForm(forms.ModelForm):
     planned = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
+    producer = forms.ModelChoiceField(
+        queryset=QuerySet(model=Producer).none(),
+        widget=forms.Select(attrs={'class': 'output_producer',}))
 
     def __init__(self, *args, **kwargs):
         super(OutputLotCreationFormsetForm, self).__init__(*args, **kwargs)

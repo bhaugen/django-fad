@@ -30,7 +30,7 @@
              <th>Fee</th>
              <th>Due</th>
 			{% if show_payments %}
-				<th>Payment</th>
+				<th>Paid</th>
 			{% endif %}
         </tr>
         	{% for delivery in producer.deliveries %}
@@ -39,12 +39,12 @@
                 <td>{{ delivery.order_item.order.paid }}</td>
                 <td>{{ delivery.order_item.product }} </td>
 			    <td>{{ delivery.transaction_date }}</td>
-                <td style="text-align: right; ">{{ delivery.quantity }}</td>
+                <td style="text-align: right; ">{{ delivery.amount }}</td>
                 <td style="text-align: right; ">{{ delivery.order_item.unit_price }}</td>
                 <td style="text-align: right; ">{{ delivery.order_item.extended_producer_fee }}</td>
-                <td style="text-align: right; ">{{ delivery.due_to_producer }}</td>
+                <td style="text-align: right; ">{{ delivery.due_to_member }}</td>
 				{% if show_payments %}
-					<td> {{ delivery.payment }} </td>
+					<td> {{ delivery.paid_amount }} </td>
 				{% endif %}
             </tr>
         	{% endfor %}
@@ -59,25 +59,22 @@
              <th>Buyer Paid?</th>
              <th>Item</th>
              <th>Date</th>
-             <th>Quantity</th>
              <th>Due</th>
 			{% if show_payments %}
-				<th>Payment</th>
+				<th>Paid</th>
 			{% endif %}
         </tr>
 		{% for process in producer.processes %}
 		<tr>
 			<td>
-				{{ process.inventory_transaction.order_item.order.customer }}: 
-				{{ process.inventory_transaction.order_item.order.id }}
+				{{ process.order_string }}: 
 			</td>
-			<td>{{ process.inventory_transaction.order_item.order.paid }}</td>
-			<td>{{ process.inventory_item.product }} </td>
-			<td>{{ process.process_date }}</td>
-			<td style="text-align: right; ">{{ process.inventory_item.planned }}</td>
-			<td style="text-align: right; ">{{ process.cost }}</td>
+			<td>{{ process.order_paid }}</td>
+			<td>{{ process.product_string }} </td>
+			<td>{{ process.transaction_date }}</td>
+			<td style="text-align: right; ">{{ process.due_to_member }}</td>
 			{% if show_payments %}
-				<td> {{ process.payment }} </td>
+				<td> {{ process.paid_amount }} </td>
 			{% endif %}
 		</tr>
 		{% endfor %}	
@@ -93,21 +90,21 @@
              <th>Date</th>
              <th>Due</th>
 			{% if show_payments %}
-				<th>Payment</th>
+				<th>Paid</th>
 			{% endif %}
         </tr>
 
-		{% for order in producer.transportations %}
+		{% for tx in producer.transportations %}
 		<tr>
 			<td>
-				{{ order.customer }}: 
-				{{ order.id }}
+				{{ tx.order.customer }}: 
+				{{ tx.order.id }}
 			</td>
-			<td>{{ order.paid }}</td>
-			<td>{{ order.order_date }}</td>
-			<td style="text-align: right; ">{{ order.transportation_fee }}</td>
+			<td>{{ tx.order.paid }}</td>
+			<td>{{ tx.order.order_date }}</td>
+			<td style="text-align: right; ">{{ tx.due_to_member }}</td>
 			{% if show_payments %}
-				<td> {{ order.transportation_payment }} </td>
+				<td> {{ tx.paid_amount }} </td>
 			{% endif %}
 		</tr>
 		{% endfor %}
@@ -126,18 +123,18 @@
 		         <th>Fee</th>
 		         <th>Due</th>
 				{% if show_payments %}
-					<th>Payment</th>
+					<th>Paid</th>
 				{% endif %}
 		    </tr>
 		    	{% for damage in producer.damaged %}
 		        <tr>
 		            <td>{{ damage.inventory_item }} </td>
 			    	<td>{{ damage.transaction_date }}</td>
-		            <td style="text-align: right; ">{{ damage.quantity }}</td>
+		            <td style="text-align: right; ">{{ damage.amount }}</td>
 		            <td>{{ damage.notes }} </td>
 		            <td style="text-align: right; ">{{ damage.inventory_item.product.price }}</td>
 		            <td style="text-align: right; ">{{ damage.inventory_item.product.decide_fee }}</td>
-		            <td style="text-align: right; ">{{ damage.due_to_producer }}</td>
+		            <td style="text-align: right; ">{{ damage.due_to_member }}</td>
 					{% if show_payments %}
 						<td> {{ damage.payment }} </td>
 					{% endif %}
@@ -158,7 +155,7 @@
 		        <tr>
 		            <td>{{ reject.inventory_item }} </td>
 			    	<td>{{ reject.transaction_date }}</td>
-		            <td style="text-align: right; ">{{ reject.quantity }}</td>
+		            <td style="text-align: right; ">{{ reject.amount }}</td>
 		            <td>{{ reject.notes }} </td>
 		        </tr>
 		    	{% endfor %}

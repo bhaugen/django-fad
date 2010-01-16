@@ -176,15 +176,38 @@
 
 		}
 
+		function producerChanged(evt)
+		{
+			var prodId = evt.target.value;
+
+			var queryNodes = dojo.query(".output_producer");
+			for(var i=0;i<queryNodes.length;i++)
+			{
+				var node = queryNodes[i];
+				var l = node.length;
+  				for (j=0;j<node.length;j++)
+				{
+					if (node.options[j].value == prodId)
+					{
+						node.selectedIndex = j;
+					}
+				}
+			}
+
+
+		}
+
 		dojo.addOnLoad(function()
 		{
 			var queryNodes = dojo.query(".quantity-field");
 			for(var i=0;i<queryNodes.length;i++)
 			{
-				var node = queryNodes[i]
+				var node = queryNodes[i];
 				dojo.connect(node, "onblur", "quantityChanged");
 
 			}
+			var node = dojo.byId("id_inputcreation-producer");
+			dojo.connect(node, "onchange", "producerChanged");
 
 		});
 

@@ -155,7 +155,7 @@
 	         <th>Fee</th>
 	         <th>Due</th>
 			{% if show_payments %}
-				<th>Payment</th>
+				<th>Paid</th>
 			{% endif %}
 	    </tr>
 		{% for producer in producers %}
@@ -164,13 +164,13 @@
 			    <tr>
 			        <td>{{ damage.inventory_item }} </td>
 			    	<td>{{ damage.transaction_date }}</td>
-			        <td style="text-align: right; ">{{ damage.quantity }}</td>
+			        <td style="text-align: right; ">{{ damage.amount }}</td>
 			        <td>{{ damage.notes }} </td>
 			        <td style="text-align: right; ">{{ damage.inventory_item.product.price }}</td>
 			        <td style="text-align: right; ">{{ damage.inventory_item.product.decide_fee }}</td>
 			        <td style="text-align: right; ">{{ damage.due_to_member }}</td>
 					{% if show_payments %}
-						<td style="text-align: right; "> {{ damage.payment }} </td>
+						<td style="text-align: right; "> {{ damage.paid_amount }} </td>
 					{% endif %}
 			    </tr>
 				{% endfor %}
@@ -199,7 +199,7 @@
 			    <tr>
 			        <td>{{ reject.inventory_item }} </td>
 			    	<td>{{ reject.transaction_date }}</td>
-			        <td style="text-align: right; ">{{ reject.quantity }}</td>
+			        <td style="text-align: right; ">{{ reject.amount }}</td>
 			        <td>{{ reject.notes }} </td>
 			    </tr>
 				{% endfor %}
