@@ -797,7 +797,7 @@ class Payment(EconomicEvent):
     def paid_transactions(self):
         paid = []
         for d in self.paid_events.all():
-            paid.append(d.initial_event.as_leaf_class())
+            paid.append(d.paid_event.as_leaf_class())
         return paid
 
     def paid_inventory_transactions(self):
