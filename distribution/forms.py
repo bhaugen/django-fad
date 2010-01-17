@@ -665,7 +665,7 @@ class OutputLotCreationForm(forms.ModelForm):
 class OutputLotCreationFormsetForm(forms.ModelForm):
     planned = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
     producer = forms.ModelChoiceField(
-        queryset=QuerySet(model=Producer).none(),
+        queryset=QuerySet(model=Producer),
         widget=forms.Select(attrs={'class': 'output_producer',}))
 
     def __init__(self, *args, **kwargs):

@@ -1826,6 +1826,7 @@ def new_process(request, process_type_id):
                         tx.process = process
                         tx.transaction_date = weekstart
                         tx.save()
+            #import pdb; pdb.set_trace()
             if output_formset:
                 for form in output_formset.forms:
                     if form.is_valid():
