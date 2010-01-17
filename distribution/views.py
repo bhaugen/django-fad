@@ -997,6 +997,8 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
     deliveries = []
     processings = []
     transportations = []
+
+    tx_types = ["Delivery", "Issue"]
      
     if paid_orders:
 
@@ -1004,7 +1006,7 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
             transaction_date__range=(from_date, to_date),
             order_item__order__paid__exact=True,
             inventory_item__producer=producer,
-            transaction_type='Delivery').order_by('order_item')
+            transaction_type__in=tx_types).order_by('order_item')
 
         procs = ServiceTransaction.objects.filter(
             from_whom=producer,
@@ -1020,7 +1022,7 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
         dels = InventoryTransaction.objects.filter(
             transaction_date__range=(from_date, to_date),
             inventory_item__producer=producer,
-            transaction_type='Delivery').order_by('order_item')
+            transaction_type__in=tx_types).order_by('order_item')
 
         procs = ServiceTransaction.objects.filter(
             from_whom=producer,
@@ -1133,12 +1135,14 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
     processings = []
     transportations = []
 
+    tx_types = ["Delivery", "Issue"]
+
     if paid_orders:
 
         dels = InventoryTransaction.objects.filter(
             transaction_date__range=(from_date, to_date),
             order_item__order__paid__exact=True,
-            transaction_type='Delivery').order_by('order_item')
+            transaction_type__in=tx_types).order_by('order_item')
 
         procs = ServiceTransaction.objects.filter(
             transaction_date__range=(from_date, to_date))
@@ -1151,7 +1155,7 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
 
         dels = InventoryTransaction.objects.filter(
             transaction_date__range=(from_date, to_date),
-            transaction_type='Delivery').order_by('order_item')
+            transaction_type__in=tx_types).order_by('order_item')
 
         procs = ServiceTransaction.objects.filter(
             transaction_date__range=(from_date, to_date))

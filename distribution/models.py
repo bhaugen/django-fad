@@ -1192,6 +1192,9 @@ class InventoryTransaction(EconomicEvent):
     
     def inventory_date(self):
         return self.inventory_item.inventory_date
+
+    def unit_price(self):
+        return self.inventory_item.product.price
     
     def due_to_member(self):
         if self.transaction_type is 'Reject':
@@ -1200,18 +1203,16 @@ class InventoryTransaction(EconomicEvent):
             return Decimal(0)
         
         fee = producer_fee()
-        unit_price = self.inventory_item.product.price
+        unit_price = self.unit_price()
         return (unit_price * self.amount * (1 - fee)).quantize(Decimal('.01'), rounding=ROUND_UP)
 
-    def should_be_paid(self):
+    def is_due(self):
         if not self.due_to_member():
-            return False
-        if self.is_paid():
             return False
         if self.inventory_item.product.pay_producer_on_terms:
             term_days = member_terms()
             due_date = self.transaction_date + datetime.timedelta(days=term_days)
-            if date.today() >= due_date:
+            if datetime.date.today() >= due_date:
                 return True
             else:
                 return False
@@ -1220,6 +1221,19 @@ class InventoryTransaction(EconomicEvent):
                 return self.order_item.order.paid
             else:
                 return False
+
+    def should_be_paid(self):
+        if self.is_paid():
+            return False
+        return self.is_due()
+
+    def extended_producer_fee(self):
+        if self.order_item:
+            return self.order_item.extended_producer_fee()
+        else:
+            unit_price = self.unit_price()
+            answer = self.amount * unit_price * producer_fee()
+            return answer.quantize(Decimal('.01'), rounding=ROUND_UP)
     
     def service_cost(self):
         cost = Decimal(0)
@@ -1258,9 +1272,7 @@ class ServiceTransaction(EconomicEvent):
                     return True
         return False
 
-    def should_be_paid(self):
-        if self.is_paid():
-            return False
+    def is_due(self):
         if self.service_type.pay_provider_on_terms:
             term_days = member_terms()
             due_date = self.transaction_date + datetime.timedelta(days=term_days)
@@ -1270,6 +1282,12 @@ class ServiceTransaction(EconomicEvent):
                 return False
         else:
             return self.order_paid()
+
+    def should_be_paid(self):
+        if self.is_paid():
+            return False
+        return self.is_due()
+
 
     def downstream_orders(self):
         # todo: shd be recursive for next processes
@@ -1327,6 +1345,9 @@ class TransportationTransaction(EconomicEvent):
     def should_be_paid(self):
         if self.is_paid():
             return False
+        return self.order.paid
+
+    def is_due(self):
         return self.order.paid
 
     def due_to_member(self):

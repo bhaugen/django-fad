@@ -89,7 +89,7 @@ class ProcessTypeAdmin(admin.ModelAdmin):
 admin.site.register(ProcessType, ProcessTypeAdmin)
 
 class ServiceTypeAdmin(admin.ModelAdmin):
-    list_display = ('name',)
+    list_display = ('name','invoiced_separately', 'pay_provider_on_terms')
   
 admin.site.register(ServiceType, ServiceTypeAdmin)
 
