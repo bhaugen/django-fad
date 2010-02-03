@@ -100,7 +100,7 @@ admin.site.register(Process, ProcessAdmin)
 
 
 class InventoryTransactionAdmin(admin.ModelAdmin):
-    list_display = ('transaction_type', 'transaction_date',  'from_whom', 'to_whom', 'order_item', 'process', 'product', 'inventory_item', 'amount', 'notes')
+    list_display = ('transaction_type', 'transaction_date',  'from_whom', 'to_whom', 'order_item', 'process', 'product', 'inventory_item', 'unit_price', 'amount', 'notes')
     #both ordering statements below caused mysterious error in admin:
     #no such column: orders_orderitem.order
     #ordering = ('order_item', 'inventory_item')

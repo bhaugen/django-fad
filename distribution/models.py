@@ -1151,6 +1151,7 @@ class InventoryTransaction(EconomicEvent):
     inventory_item = models.ForeignKey(InventoryItem)
     process = models.ForeignKey(Process, blank=True, null=True, related_name='inventory_transactions')
     order_item = models.ForeignKey(OrderItem, blank=True, null=True)
+    unit_price = models.DecimalField(max_digits=8, decimal_places=2)
 
     def __unicode__(self):
         if self.order_item:
@@ -1167,6 +1168,11 @@ class InventoryTransaction(EconomicEvent):
         if self.pk:
             prev_state = InventoryTransaction.objects.get(pk=self.pk)
             initial_qty = prev_state.amount
+        else:
+            if self.order_item:
+                self.unit_price = self.order_item.unit_price
+            else:
+                self.unit_price = self.inventory_item.product.price
         super(InventoryTransaction, self).save(force_insert, force_update)
         qty_delta = self.amount - initial_qty
         if self.transaction_type=="Receipt" or self.transaction_type=="Production":
@@ -1192,9 +1198,6 @@ class InventoryTransaction(EconomicEvent):
     
     def inventory_date(self):
         return self.inventory_item.inventory_date
-
-    def unit_price(self):
-        return self.inventory_item.product.price
     
     def due_to_member(self):
         if self.transaction_type is 'Reject':
@@ -1203,8 +1206,8 @@ class InventoryTransaction(EconomicEvent):
             return Decimal(0)
         
         fee = producer_fee()
-        unit_price = self.unit_price()
-        return (unit_price * self.amount * (1 - fee)).quantize(Decimal('.01'), rounding=ROUND_UP)
+        #unit_price = self.unit_price
+        return (self.unit_price * self.amount * (1 - fee)).quantize(Decimal('.01'), rounding=ROUND_UP)
 
     def is_due(self):
         if not self.due_to_member():
@@ -1231,7 +1234,7 @@ class InventoryTransaction(EconomicEvent):
         if self.order_item:
             return self.order_item.extended_producer_fee()
         else:
-            unit_price = self.unit_price()
+            unit_price = self.unit_price
             answer = self.amount * unit_price * producer_fee()
             return answer.quantize(Decimal('.01'), rounding=ROUND_UP)
     
