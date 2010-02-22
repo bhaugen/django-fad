@@ -9,15 +9,13 @@
 >>> steer = Product(
 ...     short_name="Steer",
 ...     long_name="Steer, live",
-...     price=1000,
-...     meat=True)
+...     price=Decimal("1000"))
 >>> steer.save()
 
 >>> beef = Product(
 ...     short_name="Beef",
 ...     long_name="Beef per lb",
-...     price=Decimal("10"),
-...     meat=True)
+...     price=Decimal("10"))
 >>> beef.save()
 
 >>> ptype = ProcessType(
@@ -64,16 +62,20 @@ Decimal("0")
 >>> goods_input = InventoryTransaction(
 ...     inventory_item=input_lot,
 ...     process=process,
+...     from_whom=producer,
+...     to_whom=producer,
 ...     transaction_type="Issue",
-...     quantity=Decimal("1"),
+...     amount=Decimal("1"),
 ...     transaction_date=test_date)
 >>> goods_input.save()
 
 >>> goods_output = InventoryTransaction(
 ...     inventory_item=output_lot,
 ...     process=process,
+...     from_whom=producer,
+...     to_whom=producer,
 ...     transaction_type="Production",
-...     quantity=Decimal("400"),
+...     amount=Decimal("400"),
 ...     transaction_date=test_date)
 >>> goods_output.save()
 
@@ -86,7 +88,7 @@ Decimal("0")
 >>> output_lot.remaining
 Decimal("400")
 
->>> goods_output.quantity = Decimal("200")
+>>> goods_output.amount = Decimal("200")
 >>> goods_output.save()
 >>> output_lot.remaining
 Decimal("200")

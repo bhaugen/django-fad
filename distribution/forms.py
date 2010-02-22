@@ -87,7 +87,7 @@ class PaymentUpdateSelectionForm(forms.Form):
 class PaymentTransactionForm(forms.Form):
     transaction_id = forms.CharField(widget=forms.HiddenInput)
     transaction_type=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '10'}))
-    order=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input'}))
+    order=forms.CharField(required=False, widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input'}))
     #product=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input'}))
     transaction_date=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '8'}))
     quantity=forms.DecimalField(required=False, widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '8'}))
