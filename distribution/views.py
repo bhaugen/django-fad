@@ -1035,8 +1035,9 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
     if paid_producer == 'paid':
 
         for tx in dels:
-            if tx.is_paid():
-                deliveries.append(tx)
+            if tx.due_to_member():
+                if tx.is_paid():
+                    deliveries.append(tx)
            
         for proc in procs:
             if proc.is_paid():
@@ -1049,8 +1050,9 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
     elif paid_producer == 'unpaid':
 
         for tx in dels:
-            if not tx.is_paid():
-                deliveries.append(tx)
+            if tx.due_to_member():
+                if not tx.is_paid():
+                    deliveries.append(tx)
 
         for tx in trans:
             if not tx.is_paid():
@@ -1061,7 +1063,10 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
                 processings.append(proc)
 
     else:
-        deliveries = dels
+        for tx in dels:
+            if tx.due_to_member():
+                deliveries.append(tx)
+
         transportations = trans
         processings = procs
 
@@ -1166,8 +1171,9 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
     if paid_producer == 'paid':
 
         for tx in dels:
-            if tx.is_paid():
-                deliveries.append(tx)
+            if tx.due_to_member():
+                if tx.is_paid():
+                    deliveries.append(tx)
            
         for proc in procs:
             if proc.is_paid():
@@ -1180,8 +1186,9 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
     elif paid_producer == 'unpaid':
 
         for tx in dels:
-            if not tx.is_paid():
-                deliveries.append(tx)
+            if tx.due_to_member():
+                if not tx.is_paid():
+                    deliveries.append(tx)
 
         for tx in trans:
             if not tx.is_paid():
@@ -1192,7 +1199,9 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
                 processings.append(proc)
 
     else:
-        deliveries = dels
+        for tx in dels:
+            if tx.due_to_member():
+                deliveries.append(tx)
         transportations = trans
         processings = procs
 
