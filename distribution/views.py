@@ -1415,7 +1415,7 @@ def payment_update(request, producer_id, payment_id):
                             amount_paid = tx.due_to_member())
                         tp.save()
                 else:
-                    tx.delete_compensation()
+                    tx.delete_payments()
             return HttpResponseRedirect('/%s/%s/'
                % ('payment', the_payment.id))
         #else:

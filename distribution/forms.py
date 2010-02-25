@@ -187,14 +187,7 @@ def create_payment_transaction_forms(producer=None, payment=None, data=None):
         for p in payment.paid_service_transactions():
             form_list.append(create_processing_payment_form(p, pay_all, data))
 
-    due1 = InventoryTransaction.objects.filter( 
-        order_item__order__paid=True,
-        inventory_item__producer=producer)
-    due2 = InventoryTransaction.objects.filter( 
-        transaction_type='Damage',
-        inventory_item__producer=producer)
-    due = itertools.chain(due1, due2)
-    for d in due:
+    for d in InventoryTransaction.objects.filter(inventory_item__producer=producer):
         if d.should_be_paid():
             form_list.append(create_payment_transaction_form(d, pay_all, data))
 

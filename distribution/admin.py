@@ -37,7 +37,7 @@ admin.site.register(Customer, CustomerAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('short_name', 'long_name', 'parent', 'price', 'expiration_days', )
+    list_display = ('short_name', 'long_name', 'parent', 'price', 'expiration_days', 'pay_producer')
     list_filter = ['parent']
     search_fields = ['short_name', 'long_name']
     
