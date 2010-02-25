@@ -194,7 +194,7 @@
         "model": "distribution.product", 
         "fields": {
             "parent": null, 
-            "pay_producer": true, 
+            "pay_producer": false, 
             "sellable": false, 
             "short_name": "Beef Cuts", 
             "is_parent": true, 
@@ -211,7 +211,7 @@
         "model": "distribution.product", 
         "fields": {
             "parent": 3, 
-            "pay_producer": true, 
+            "pay_producer": false, 
             "sellable": true, 
             "short_name": "Beef Roast", 
             "is_parent": false, 
@@ -228,7 +228,7 @@
         "model": "distribution.product", 
         "fields": {
             "parent": null, 
-            "pay_producer": true, 
+            "pay_producer": false, 
             "sellable": false, 
             "short_name": "Beef Section", 
             "is_parent": true, 
@@ -245,7 +245,7 @@
         "model": "distribution.product", 
         "fields": {
             "parent": 3, 
-            "pay_producer": true, 
+            "pay_producer": false, 
             "sellable": true, 
             "short_name": "Beef Steak", 
             "is_parent": false, 
@@ -262,7 +262,7 @@
         "model": "distribution.product", 
         "fields": {
             "parent": 2, 
-            "pay_producer": true, 
+            "pay_producer": false, 
             "sellable": true, 
             "short_name": "Beef, Side", 
             "is_parent": false, 
@@ -836,18 +836,6 @@
         }
     }, 
     {
-        "pk": 17, 
-        "model": "distribution.economicevent", 
-        "fields": {
-            "from_whom": 1, 
-            "to_whom": 2, 
-            "notes": "", 
-            "amount": "1222", 
-            "transaction_date": "2010-01-14", 
-            "content_type": 19
-        }
-    }, 
-    {
         "pk": 18, 
         "model": "distribution.economicevent", 
         "fields": {
@@ -965,31 +953,6 @@
             "amount": "100", 
             "transaction_date": "2010-01-18", 
             "content_type": 25
-        }
-    }, 
-    {
-        "pk": 17, 
-        "model": "distribution.payment", 
-        "fields": {
-            "reference": ""
-        }
-    }, 
-    {
-        "pk": 1, 
-        "model": "distribution.transactionpayment", 
-        "fields": {
-            "paid_event": 9, 
-            "amount_paid": "752", 
-            "payment": 17
-        }
-    }, 
-    {
-        "pk": 2, 
-        "model": "distribution.transactionpayment", 
-        "fields": {
-            "paid_event": 10, 
-            "amount_paid": "470", 
-            "payment": 17
         }
     }, 
     {
