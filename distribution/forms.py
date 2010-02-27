@@ -309,7 +309,7 @@ def create_plan_forms(producer, data=None):
                 'parents': prod.parents, 
                 'prodname': prod.short_name, 
                 'from_date': datetime.date.today(),
-                'to_date': datetime.date.today(),
+                'to_date': datetime.date.today()  + datetime.timedelta(days=365),
                 'quantity': 0})
         this_form.long_name = prod.long_name
         form_list.append(this_form)
