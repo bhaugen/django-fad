@@ -266,8 +266,12 @@ def order_selection(request):
             ihdata = ihform.cleaned_data
             customer_id = ihdata['customer']
             ord_date = ihdata['order_date']
-            return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-               % ('orderbylot', customer_id, ord_date.year, ord_date.month, ord_date.day))
+            if ordering_by_lot():
+                return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
+                   % ('orderbylot', customer_id, ord_date.year, ord_date.month, ord_date.day))
+            else:
+                return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
+                   % ('orderupdate', customer_id, ord_date.year, ord_date.month, ord_date.day))
     else:
         #ihform = OrderSelectionForm(initial={'order_date': orderdate, })
     #return render_to_response('distribution/order_selection.html', {'order_date': orderdate, 'header_form': ihform})
@@ -711,8 +715,12 @@ def order_table_selection(request):
         if dsform.is_valid():
             dsdata = dsform.cleaned_data
             ord_date = dsdata['selected_date']
-            return HttpResponseRedirect('/%s/%s/%s/%s/'
-               % ('ordertable', ord_date.year, ord_date.month, ord_date.day))
+            if ordering_by_lot():
+                return HttpResponseRedirect('/%s/%s/%s/%s/'
+                    % ('ordertable', ord_date.year, ord_date.month, ord_date.day))
+            else:
+                return HttpResponseRedirect('/%s/%s/%s/%s/'
+                    % ('ordertablebyproduct', ord_date.year, ord_date.month, ord_date.day))
     else:
         dsform = DateSelectionForm(initial=init)
     return render_to_response('distribution/order_table_selection.html', {'dsform': dsform,})
@@ -736,9 +744,14 @@ def order_table(request, year, month, day):
 
 def order_table_by_product(request, year, month, day):
     thisdate = datetime.date(int(year), int(month), int(day))
-    heading_list = order_headings(thisdate)
-    item_list = order_item_rows(thisdate)
-    return render_to_response('distribution/order_table.html', {'date': thisdate, 'heading_list': heading_list, 'item_list': item_list})
+    date_string = thisdate.strftime('%Y_%m_%d')
+    heading_list = order_headings_by_product(thisdate)
+    item_list = order_item_rows_by_product(thisdate)
+    return render_to_response('distribution/order_table_by_product.html', 
+        {'date': thisdate, 
+         'datestring': date_string,
+         'heading_list': heading_list, 
+         'item_list': item_list})
 
 
 def order_csv(request, order_date):
@@ -759,12 +772,12 @@ def order_csv(request, order_date):
     return response
 
 
-def order_csv_by_product(request):
+def order_csv_by_product(request, order_date):
+    thisdate = datetime.datetime(*time.strptime(order_date, '%Y_%m_%d')[0:5]).date()
     response = HttpResponse(mimetype='text/csv')
     response['Content-Disposition'] = 'attachment; filename=ordersheet.csv'
-    thisdate = current_week()
     product_heads = ['Item', 'Description', 'Producers', 'Avail', 'Ordered']
-    order_heads = order_headings(thisdate, links=False)
+    order_heads = order_headings_by_product(thisdate, links=False)
     heading_list = product_heads + order_heads
     item_list = order_item_rows(thisdate)
     writer = csv.writer(response)

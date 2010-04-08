@@ -94,7 +94,7 @@
 			{
 				try
 				{
-					var thisQtyField = dojo.byId(row + i + '-quantity');
+					var thisQtyField = dojo.byId(row + i + '-amount');
 					totDelivered += parseFloat(thisQtyField.value);
 				}
 				catch(e){}
@@ -196,7 +196,7 @@
 					{{item_form.product_id}}
             		{% for del_form in item_form.delivery_forms %}
 						<td>{{ del_form.inventory_item }}</td>
-						<td>{{ del_form.quantity }}</td>
+						<td>{{ del_form.amount }}</td>
            			{% endfor %}
             		{% for empty_field in item_form.empty_fields %}
 						<td>{{ empty_field }}</td>

@@ -433,7 +433,8 @@ class DeliveryItemForm(forms.Form):
 
 
 class DeliveryForm(forms.ModelForm):
-    quantity = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '8'}))
+    #quantity = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '8'}))
+    amount = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '8'}))
     class Meta:
         model = InventoryTransaction
         exclude = ('order_item', 'transaction_type', 'transaction_date', 'notes')

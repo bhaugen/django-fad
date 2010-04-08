@@ -40,6 +40,13 @@ def current_week():
         answer = datetime.date.today()
     return answer
 
+def ordering_by_lot():
+    try:
+        answer = FoodNetwork.objects.get(pk=1).order_by_lot
+    except FoodNetwork.DoesNotExist:
+        answer = False
+    return answer
+
 def charge_name():
     try:
         answer = FoodNetwork.objects.get(pk=1).charge_name
@@ -218,6 +225,8 @@ class FoodNetwork(Party):
     charge_name = models.CharField(max_length=32, blank=True, default='Delivery charge')
     current_week = models.DateField(default=datetime.date.today, 
         help_text='Current week for operations availability and orders')
+    order_by_lot = models.BooleanField(default=False, 
+        help_text='Assign lots when ordering, or assign them later')
 
     def __unicode__(self):
         return self.short_name
