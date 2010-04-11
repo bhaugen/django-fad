@@ -39,7 +39,7 @@
 				<td>
 				    {% for delivery in orderitem.inventorytransaction_set.all %}
 						{{ delivery.inventory_item.producer }}:&#160;
-				        {{ delivery.quantity }}&#160;&#160;
+				        {{ delivery.amount }}&#160;&#160;
 				    {% endfor %}
 				</td>
             </tr>

@@ -304,9 +304,9 @@ def order_update(request, cust_id, year, month, day):
 
     if request.method == "POST":
         if order:
-            ordform = OrderForm(request.POST, instance=order)
+            ordform = OrderForm(order=order, data=request.POST, instance=order)
         else:
-            ordform = OrderForm(request.POST)
+            ordform = OrderForm(data=request.POST)
         itemforms = create_order_item_forms(order, availdate, orderdate, request.POST)     
         if ordform.is_valid() and all([itemform.is_valid() for itemform in itemforms]):
             if order:
@@ -316,6 +316,30 @@ def order_update(request, cust_id, year, month, day):
                 the_order.customer = customer
                 the_order.order_date = orderdate
                 the_order.save()
+
+            order_data = ordform.cleaned_data
+            transportation_fee = order_data["transportation_fee"]
+            distributor = order_data["distributor"]
+            #import pdb; pdb.set_trace()
+            if transportation_fee:
+                transportation_tx = None
+                if order:
+                    try:
+                        transportation_tx = TransportationTransaction.objects.get(order=order)
+                        if transportation_fee != transportation_tx.amount:
+                            transportation_tx.amount = transportation_fee
+                            transportation_tx.save()
+                    except TransportationTransaction.DoesNotExist:
+                        pass
+                if not transportation_tx:
+                    transportation_tx = TransportationTransaction(
+                        from_whom=distributor,
+                        to_whom=customer,
+                        order=the_order, 
+                        amount=transportation_fee,
+                        transaction_date=orderdate)
+                    transportation_tx.save()
+
             for itemform in itemforms:
                 data = itemform.cleaned_data
                 qty = data['quantity'] 
@@ -338,7 +362,7 @@ def order_update(request, cust_id, year, month, day):
                % ('order', the_order.id))
     else:
         if order:
-            ordform = OrderForm(instance=order)
+            ordform = OrderForm(order=order, instance=order)
         else:
             ordform = OrderForm(initial={'customer': customer, 'order_date': orderdate, })
         itemforms = create_order_item_forms(order, availdate, orderdate)
@@ -613,23 +637,25 @@ def delivery_update(request, cust_id, year, month, day):
                 item_data = itemform.cleaned_data
                 oi_id = item_data['order_item_id']
                 order_item = OrderItem.objects.get(pk=oi_id)
+                #import pdb; pdb.set_trace()
                 for delform in itemform.delivery_forms:
                     if delform.is_valid():
                         del_data = delform.cleaned_data
                         inv_item = del_data['inventory_item']
-                        qty = del_data['quantity']
+                        amt = del_data['amount']
                         if delform.instance.pk:
-                            if qty > 0:
+                            if amt > 0:
                                 delform.save()
                             else:
                                 delform.instance.delete()
                         else:
                             delivery = delform.save(commit=False) 
+                            delivery.from_whom = inv_item.producer
+                            delivery.to_whom = customer
                             delivery.order_item = order_item
+                            delivery.unit_price = order_item.unit_price
                             delivery.transaction_date = order_item.order.order_date
                             delivery.transaction_type='Delivery'
-                            # obsolete field
-                            #delivery.pay_producer = True
                             delivery.save()
         return HttpResponseRedirect('/%s/%s/%s/%s/' 
                                     % ('orderdeliveries', year, month, day))
@@ -938,10 +964,10 @@ def payment_selection(request):
             producer_id = ihdata['producer']
             from_date = ihdata['from_date'].strftime('%Y_%m_%d')
             to_date = ihdata['to_date'].strftime('%Y_%m_%d')
-            paid_orders = 1 if ihdata['paid_orders'] else 0
-            paid_producer = ihdata['paid_producer']
+            due = 1 if ihdata['due'] else 0
+            paid_member = ihdata['paid_member']
             return HttpResponseRedirect('/%s/%s/%s/%s/%s/%s/'
-               % ('producerpayments', producer_id, from_date, to_date, paid_orders, paid_producer))
+               % ('producerpayments', producer_id, from_date, to_date, due, paid_member))
     else:
         #ihform = PaymentSelectionForm(initial={'from_date': thisdate, 'to_date': thisdate })
     #return render_to_response('distribution/payment_selection.html', {'avail_date': thisdate, 'header_form': ihform})
@@ -979,15 +1005,15 @@ def statements(request, from_date, to_date):
     return render_to_response('distribution/statements.html', 
               {'payments': payments, 'network': network, })   
 
-def producer_payments(request, prod_id, from_date, to_date, paid_orders, paid_producer):
+def producer_payments(request, prod_id, from_date, to_date, due, paid_member):
     try:
         from_date = datetime.datetime(*time.strptime(from_date, '%Y_%m_%d')[0:5]).date()
         to_date = datetime.datetime(*time.strptime(to_date, '%Y_%m_%d')[0:5]).date()
-        paid_orders = int(paid_orders)
+        due = int(due)
     except ValueError:
             raise Http404
     show_payments = True
-    if paid_producer == 'unpaid':
+    if paid_member == 'unpaid':
         show_payments=False
     prod_id = int(prod_id)
     if prod_id:
@@ -995,15 +1021,15 @@ def producer_payments(request, prod_id, from_date, to_date, paid_orders, paid_pr
             producer = Party.objects.get(pk=prod_id)
         except Party.DoesNotExist:
             raise Http404
-        producer = one_producer_payments(producer, from_date, to_date, paid_orders, paid_producer)
+        producer = one_producer_payments(producer, from_date, to_date, due, paid_member)
         return render_to_response('distribution/one_producer_payments.html', 
               {'from_date': from_date, 'to_date': to_date, 'producer': producer, 'show_payments': show_payments })
     else:
-        producer_list = all_producer_payments(from_date, to_date, paid_orders, paid_producer)
+        producer_list = all_producer_payments(from_date, to_date, due, paid_member)
         return render_to_response('distribution/producer_payments.html', 
             {'from_date': from_date, 'to_date': to_date, 'producers': producer_list, 'show_payments': show_payments })
 
-def one_producer_payments(producer, from_date, to_date, paid_orders, paid_producer):  
+def one_producer_payments(producer, from_date, to_date, due, paid_member):  
 
     # Collect the transactions
 
@@ -1012,40 +1038,74 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
     transportations = []
 
     tx_types = ["Delivery", "Issue"]
-     
-    if paid_orders:
 
-        dels = InventoryTransaction.objects.filter(
-            transaction_date__range=(from_date, to_date),
-            order_item__order__paid__exact=True,
-            inventory_item__producer=producer,
-            transaction_type__in=tx_types).order_by('order_item')
+    # filter by date and producer
 
-        procs = ServiceTransaction.objects.filter(
-            from_whom=producer,
-            transaction_date__range=(from_date, to_date))
+    dels = InventoryTransaction.objects.filter(
+        inventory_item__producer=producer,
+        transaction_date__range=(from_date, to_date),
+        transaction_type__in=tx_types).order_by('order_item')
 
-        trans = TransportationTransaction.objects.filter(
-            from_whom=producer,
-            transaction_date__range=(from_date, to_date),
-            order__paid=True)
+    procs = ServiceTransaction.objects.filter(
+        from_whom=producer,
+        transaction_date__range=(from_date, to_date))
 
-    else:
+    trans = TransportationTransaction.objects.filter(
+        from_whom=producer,
+        transaction_date__range=(from_date, to_date))
 
-        dels = InventoryTransaction.objects.filter(
-            transaction_date__range=(from_date, to_date),
-            inventory_item__producer=producer,
-            transaction_type__in=tx_types).order_by('order_item')
+    # filter by payment status
 
-        procs = ServiceTransaction.objects.filter(
-            from_whom=producer,
-            transaction_date__range=(from_date, to_date))
+    if due and paid_member == 'paid':
 
-        trans = TransportationTransaction.objects.filter(
-            from_whom=producer,
-            transaction_date__range=(from_date, to_date))
+        for tx in dels:
+            if tx.is_due():
+                if tx.is_paid():
+                    deliveries.append(tx)
 
-    if paid_producer == 'paid':
+        for proc in procs:
+            if proc.is_due():
+                if proc.is_paid():
+                    processings.append(proc)
+ 
+        for tx in trans:
+            if tx.is_due():
+                if tx.is_paid():
+                    transportations.append(tx)
+
+    elif due and paid_member == 'unpaid':
+
+        for tx in dels:
+            if tx.is_due():
+                if not tx.is_paid():
+                    deliveries.append(tx)
+
+        for proc in procs:
+            if proc.is_due():
+                if not proc.is_paid():
+                    processings.append(proc)
+ 
+        for tx in trans:
+            if tx.is_due():
+                if not tx.is_paid():
+                    transportations.append(tx)
+
+    elif due:
+
+        for tx in dels:
+            if tx.is_due():
+                deliveries.append(tx)
+
+        for proc in procs:
+            if proc.is_due():
+                processings.append(proc)
+ 
+        for tx in trans:
+            if tx.is_due():
+                transportations.append(tx)
+
+
+    elif paid_member == 'paid':
 
         for tx in dels:
             if tx.due_to_member():
@@ -1060,7 +1120,7 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
             if tx.is_paid():
                 transportations.append(tx)
 
-    elif paid_producer == 'unpaid':
+    elif paid_member == 'unpaid':
 
         for tx in dels:
             if tx.due_to_member():
@@ -1079,12 +1139,11 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
         for tx in dels:
             if tx.due_to_member():
                 deliveries.append(tx)
-
         transportations = trans
         processings = procs
 
     damaged = []                
-    if paid_producer == 'paid':
+    if paid_member == 'paid':
         txs = InventoryTransaction.objects.filter(
             inventory_item__producer=producer,
             transaction_date__range=(from_date, to_date), 
@@ -1092,7 +1151,7 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
         for tx in txs:
             if tx.is_paid():
                 damaged.append(tx)       
-    elif paid_producer == 'unpaid':
+    elif paid_member == 'unpaid':
         txs = InventoryTransaction.objects.filter(
             inventory_item__producer=producer,
             transaction_date__range=(from_date, to_date),
@@ -1136,7 +1195,7 @@ def one_producer_payments(producer, from_date, to_date, paid_orders, paid_produc
     producer.total_due = total_due
     return producer
 
-def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
+def all_producer_payments(from_date, to_date, due, paid_member):
     delivery_producers = {}
     processors = {}
     transporters = {}
@@ -1144,7 +1203,7 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
     reject_producers = {}
     
     # Logic summary:
-    # 1. Collect the transactions (deliveries, damages, rejects, processing and transportation)
+    # 1. Collect and filter the transactions (deliveries, damages, rejects, processing and transportation)
     # 2. Organize and total the transactions by party
     
     # Collect the transactions
@@ -1155,33 +1214,70 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
 
     tx_types = ["Delivery", "Issue"]
 
-    if paid_orders:
+    # filter by date
 
-        dels = InventoryTransaction.objects.filter(
-            transaction_date__range=(from_date, to_date),
-            order_item__order__paid__exact=True,
-            transaction_type__in=tx_types).order_by('order_item')
+    dels = InventoryTransaction.objects.filter(
+        transaction_date__range=(from_date, to_date),
+        transaction_type__in=tx_types).order_by('order_item')
 
-        procs = ServiceTransaction.objects.filter(
-            transaction_date__range=(from_date, to_date))
+    procs = ServiceTransaction.objects.filter(
+        transaction_date__range=(from_date, to_date))
 
-        trans = TransportationTransaction.objects.filter(
-            transaction_date__range=(from_date, to_date),
-            order__paid=True)
+    trans = TransportationTransaction.objects.filter(
+        transaction_date__range=(from_date, to_date))
 
-    else:
+    # filter by payment status
 
-        dels = InventoryTransaction.objects.filter(
-            transaction_date__range=(from_date, to_date),
-            transaction_type__in=tx_types).order_by('order_item')
+    if due and paid_member == 'paid':
 
-        procs = ServiceTransaction.objects.filter(
-            transaction_date__range=(from_date, to_date))
+        for tx in dels:
+            if tx.is_due():
+                if tx.is_paid():
+                    deliveries.append(tx)
 
-        trans = TransportationTransaction.objects.filter(
-            transaction_date__range=(from_date, to_date))
+        for proc in procs:
+            if proc.is_due():
+                if proc.is_paid():
+                    processings.append(proc)
+ 
+        for tx in trans:
+            if tx.is_due():
+                if tx.is_paid():
+                    transportations.append(tx)
 
-    if paid_producer == 'paid':
+    elif due and paid_member == 'unpaid':
+
+        for tx in dels:
+            if tx.is_due():
+                if not tx.is_paid():
+                    deliveries.append(tx)
+
+        for proc in procs:
+            if proc.is_due():
+                if not proc.is_paid():
+                    processings.append(proc)
+ 
+        for tx in trans:
+            if tx.is_due():
+                if not tx.is_paid():
+                    transportations.append(tx)
+
+    elif due:
+
+        for tx in dels:
+            if tx.is_due():
+                deliveries.append(tx)
+
+        for proc in procs:
+            if proc.is_due():
+                processings.append(proc)
+ 
+        for tx in trans:
+            if tx.is_due():
+                transportations.append(tx)
+
+
+    elif paid_member == 'paid':
 
         for tx in dels:
             if tx.due_to_member():
@@ -1196,7 +1292,7 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
             if tx.is_paid():
                 transportations.append(tx)
 
-    elif paid_producer == 'unpaid':
+    elif paid_member == 'unpaid':
 
         for tx in dels:
             if tx.due_to_member():
@@ -1219,14 +1315,14 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
         processings = procs
 
     damaged = []                
-    if paid_producer == 'paid':
+    if paid_member == 'paid':
         txs = InventoryTransaction.objects.filter(
             transaction_date__range=(from_date, to_date), 
             transaction_type='Damage').order_by('inventory_item')
         for tx in txs:
             if tx.is_paid():
                 damaged.append(tx)       
-    elif paid_producer == 'unpaid':
+    elif paid_member == 'unpaid':
         txs = InventoryTransaction.objects.filter(
             transaction_date__range=(from_date, to_date),
             transaction_type='Damage').order_by('inventory_item')
@@ -1249,7 +1345,6 @@ def all_producer_payments(from_date, to_date, paid_orders, paid_producer):
         prod = delivery.inventory_item.producer
         delivery_producers.setdefault(prod, []).append(delivery)
 
-    # todo: replace with ServiceTransactions
     for proc in processings:
         processor = proc.from_whom
         processors.setdefault(processor, []).append(proc)

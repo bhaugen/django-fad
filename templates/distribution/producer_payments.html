@@ -58,7 +58,9 @@
 						<b>{{ producer }} deliveries total:</b>
 					</td>
 					<td  style="text-align: right; " ><b>{{ producer.delivery_total_due }}</b></td>
-					<td  style="text-align: right; " ><b>{{ producer.delivery_total_paid }}</b></td>
+					{% if show_payments %}
+						<td  style="text-align: right; " ><b>{{ producer.delivery_total_paid }}</b></td>
+					{% endif %}
 				</tr>
 			{% endif %}
 		{% endfor %}
@@ -68,6 +70,7 @@
     <table class="ga-event-table" >
         <tr>
              <th>Processor</th>
+             <th>Type</th>
              <th>Order</th>
              <th>Due?</th>
              <th>Item</th>
@@ -82,6 +85,7 @@
 				{% for process in producer.processes %}
 			    <tr>
 			        <td>{{ producer }}</td>
+			        <td>{{ process.service_type }}</td>
 			        <td>
 						{{ process.order_string }}: 
 					</td>
@@ -95,11 +99,13 @@
 			    </tr>
 				{% endfor %}
 				<tr>
-					<td class="read-only-td" colspan="5" style="text-align: right; ">
+					<td class="read-only-td" colspan="6" style="text-align: right; ">
 						<b>{{ producer }} processing total:</b>
 					</td>
 					<td  style="text-align: right; " ><b>{{ producer.process_total_due }}</b></td>
-					<td  style="text-align: right; " ><b>{{ producer.process_total_paid }}</b></td>
+					{% if show_payments %}
+					    <td  style="text-align: right; " ><b>{{ producer.process_total_paid }}</b></td>
+					{% endif %}
 				</tr>
 			{% endif %}
 		{% endfor %}
@@ -137,9 +143,11 @@
 				<tr>
 					<td class="read-only-td" colspan="4" style="text-align: right; ">
 						<b>{{ producer }} transportation total:</b>
-					</td>
+					</td> 
 					<td  style="text-align: right; " ><b>{{ producer.transportation_total_due }}</b></td>
-					<td  style="text-align: right; " ><b>{{ producer.transportation_total_paid }}</b></td>
+					{% if show_payments %}
+					   <td  style="text-align: right; " ><b>{{ producer.transportation_total_paid }}</b></td>
+					{% endif %}
 				</tr>
 			{% endif %}
 		{% endfor %}
@@ -214,14 +222,18 @@
         <tr>
             <th>Member</th>
             <th>Due</th>
-            <th>Paid</th>
+			{% if show_payments %}
+            	<th>Paid</th>
+			{% endif %}
         </tr>
 	{% for producer in producers %}
 		{% if producer.grand_total_due %}
 		    <tr>
 		        <td>{{ producer.short_name }} </td>
 		        <td style="text-align: right; ">${{ producer.grand_total_due }}</td>
-		        <td style="text-align: right; ">${{ producer.grand_total_paid }}</td>
+				{% if show_payments %}
+		        	<td style="text-align: right; ">${{ producer.grand_total_paid }}</td>
+				{% endif %}
 		    </tr>
 		{% endif %}
 	{% endfor %}

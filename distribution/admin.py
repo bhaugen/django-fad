@@ -54,12 +54,9 @@ admin.site.register(ProductPlan, ProductPlanAdmin)
 
 class InventoryItemAdmin(admin.ModelAdmin):
     list_display = ('product', 'producer', 'custodian', 'inventory_date', 'expiration_date', 'planned', 'remaining', 'received', 'onhand', 'notes')
-    # Todo: how to sort for admin?
-    #ordering = ('product',)
     list_filter = ['producer', 'product']
     search_fields = ['producer__short_name, product__short_name']
     date_hierarchy = 'inventory_date'
-#    inlines = [ ProcessingInline, ]
     
 admin.site.register(InventoryItem, InventoryItemAdmin)
 
@@ -101,14 +98,7 @@ admin.site.register(Process, ProcessAdmin)
 
 class InventoryTransactionAdmin(admin.ModelAdmin):
     list_display = ('transaction_type', 'transaction_date',  'from_whom', 'to_whom', 'order_item', 'process', 'product', 'inventory_item', 'unit_price', 'amount', 'notes')
-    #both ordering statements below caused mysterious error in admin:
-    #no such column: orders_orderitem.order
-    #ordering = ('order_item', 'inventory_item')
-    #verbose_name_plural = 'Inventory Transactions'
-    #ordering = ('inventory_item')
-    #list_select_related = True
     list_filter = ['transaction_type', 'inventory_item']
-    #search_fields = ['product.short_name']
     search_fields = ['inventory_item__producer__short_name', 'order_item__order__customer__short_name', 'inventory_item__product__short_name']
     date_hierarchy = 'transaction_date'
   
@@ -121,12 +111,14 @@ admin.site.register(Payment, PaymentAdmin)
 
 
 class ServiceTransactionAdmin(admin.ModelAdmin):
+    date_hierarchy = 'transaction_date'
     list_display = ('service_type', 'process', 'from_whom', 'to_whom', 'transaction_date', 'amount')
   
 admin.site.register(ServiceTransaction, ServiceTransactionAdmin)
 
 
 class TransportationTransactionAdmin(admin.ModelAdmin):
+    date_hierarchy = 'transaction_date'
     list_display = ('service_type', 'order', 'from_whom', 'to_whom', 'transaction_date', 'amount')
   
 admin.site.register(TransportationTransaction, TransportationTransactionAdmin)

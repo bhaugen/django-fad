@@ -948,7 +948,7 @@ class OrderItem(models.Model):
     def service_cost(self):
         cost = Decimal(0)
         for delivery in self.inventorytransaction_set.all():
-            cost += delivery.service_cost()
+            cost += delivery.invoiced_service_cost()
         return cost.quantize(Decimal('.01'))
     
     def processors(self):
@@ -1057,6 +1057,9 @@ class Process(models.Model):
     def services(self):
         return self.service_transactions.all()
 
+    def invoiced_services(self):
+        return self.service_transactions.filter(service_type__invoiced_separately=True)
+
     def input_lot_id(self):
         inputs = self.inventory_transactions.filter(transaction_type="Issue")
         try:
@@ -1109,6 +1112,12 @@ class Process(models.Model):
             cost += s.amount
         return cost
 
+    def invoiced_service_cost(self):
+        cost = Decimal("0")
+        for s in self.invoiced_services():
+            cost += s.amount
+        return cost
+
     def unit_service_cost(self):
         """ Allocating the same cost to each output unit 
         """
@@ -1126,6 +1135,19 @@ class Process(models.Model):
         """ Allocating the same cost to each output unit 
         """
         cost = self.cumulative_service_cost()
+        output = sum(op.amount for op in self.outputs())
+        return cost / output
+
+    def cumulative_invoiced_service_cost(self):
+        cost = self.invoiced_service_cost()
+        for proc in self.previous_processes_recursive():
+            cost += proc.invoiced_service_cost()
+        return cost
+
+    def cumulative_invoiced_unit_service_cost(self):
+        """ Allocating the same cost to each output unit 
+        """
+        cost = self.cumulative_invoiced_service_cost()
         output = sum(op.amount for op in self.outputs())
         return cost / output
 
@@ -1209,7 +1231,7 @@ class InventoryTransaction(EconomicEvent):
         return self.inventory_item.inventory_date
     
     def due_to_member(self):
-        if self.transaction_type is 'Reject':
+        if self.transaction_type=='Reject' or self.transaction_type=="Production" :
             return Decimal(0)
         if not self.inventory_item.product.pay_producer:
             return Decimal(0)
@@ -1252,6 +1274,13 @@ class InventoryTransaction(EconomicEvent):
         item = self.inventory_item
         for tx in item.inventorytransaction_set.filter(transaction_type="Production"):
             cost += self.amount * tx.process.cumulative_unit_service_cost()
+        return cost
+
+    def invoiced_service_cost(self):
+        cost = Decimal(0)
+        item = self.inventory_item
+        for tx in item.inventorytransaction_set.filter(transaction_type="Production"):
+            cost += self.amount * tx.process.cumulative_invoiced_unit_service_cost()
         return cost
 
     def services(self):
