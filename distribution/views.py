@@ -1519,7 +1519,7 @@ def payment_update(request, producer_id, payment_id):
                 #import pdb; pdb.set_trace()
                 if tx_type == 'Transportation':
                     tx = TransportationTransaction.objects.get(pk=tx_id)
-                elif tx_type == 'Processing':
+                elif tx_type == 'Service':
                     tx = ServiceTransaction.objects.get(pk=tx_id)
                 else:
                     tx = InventoryTransaction.objects.get(pk=tx_id)

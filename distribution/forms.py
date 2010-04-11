@@ -85,9 +85,8 @@ class PaymentUpdateSelectionForm(forms.Form):
         self.fields['payment'].choices = [('', 'New')] + [(payment.id, payment) for payment in Payment.objects.all()]
 
 class PaymentTransactionForm(forms.Form):
-    # todo: order and tx_type shd be changed to strings, like product
     transaction_id = forms.CharField(widget=forms.HiddenInput)
-    #transaction_type=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '10'}))
+    transaction_type=forms.CharField(widget=forms.HiddenInput)
     #order=forms.CharField(required=False, widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input'}))
     #product=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input'}))
     transaction_date=forms.CharField(widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '8'}))
@@ -112,7 +111,7 @@ def create_payment_transaction_form(inventory_transaction, pay_all, data=None):
         paid = not not inventory_transaction.is_paid()
     the_form = PaymentTransactionForm(data, prefix=inventory_transaction.id, initial={
         'transaction_id': inventory_transaction.id,
-        #'transaction_type': inventory_transaction.transaction_type,
+        'transaction_type': inventory_transaction.transaction_type,
         #'order': order,
         #'product': inventory_transaction.inventory_item.product.long_name, 
         'transaction_date': inventory_transaction.transaction_date,
@@ -121,7 +120,7 @@ def create_payment_transaction_form(inventory_transaction, pay_all, data=None):
         'notes': inventory_transaction.notes,
         'paid': paid,
         })
-    the_form.transaction_type = inventory_transaction.transaction_type
+    the_form.display_type = inventory_transaction.transaction_type
     the_form.order = order
     the_form.product = inventory_transaction.inventory_item.product.long_name
     return the_form
@@ -138,7 +137,7 @@ def create_processing_payment_form(service_transaction, pay_all, data=None):
     prefix = "".join(["proc", str(service_transaction.id)])
     the_form = PaymentTransactionForm(data, prefix=prefix, initial={
         'transaction_id': service_transaction.id,
-        #'transaction_type': service_transaction.service_type,
+        'transaction_type': 'Service',
         #'order': order,
         'transaction_date': service_transaction.transaction_date,
         'quantity': "",
@@ -148,7 +147,7 @@ def create_processing_payment_form(service_transaction, pay_all, data=None):
         'notes': service_transaction.notes,
         'paid': paid,
         })
-    the_form.transaction_type = service_transaction.service_type
+    the_form.display_type = service_transaction.service_type
     the_form.order = order
     the_form.product = service_transaction.product_string()
     return the_form
@@ -163,7 +162,7 @@ def create_transportation_payment_form(transportation_tx, pay_all, data=None):
     prefix = "".join(["transport", str(transportation_tx.id)])
     the_form = PaymentTransactionForm(data, prefix=prefix, initial={
         'transaction_id': transportation_tx.id,
-        #'transaction_type': transportation_tx.service_type.name,
+        'transaction_type': 'Transportation',
         #'order': transportation_tx.order,
         'transaction_date': transportation_tx.transaction_date,
         'quantity': "",
@@ -171,7 +170,7 @@ def create_transportation_payment_form(transportation_tx, pay_all, data=None):
         'notes': "",
         'paid': paid,
         })
-    the_form.transaction_type = transportation_tx.service_type.name
+    the_form.display_type = transportation_tx.service_type.name
     the_form.order = transportation_tx.order
     the_form.product = ""
     return the_form

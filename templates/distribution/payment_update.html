@@ -215,7 +215,7 @@
             </tr>
             {% for item_form in item_forms %}
                  <tr>
-                    <td class="read-only-td" > {{ item_form.transaction_type }} </td>
+                    <td class="read-only-td" > {{ item_form.display_type }} </td>
                     <td class="read-only-td" > {{ item_form.order }} </td>
                     <td class="read-only-td" > {{ item_form.product }} </td>
                     <td class="read-only-td" > {{ item_form.transaction_date }} </td>
@@ -224,6 +224,7 @@
                     <td> {{ item_form.paid }} </td>
 					<td class="read-only-td" > {{ item_form.notes }} </td>
 					{{ item_form.transaction_id}}
+					{{ item_form.transaction_type}}
                 </tr>
             {% endfor %}
         </table>
