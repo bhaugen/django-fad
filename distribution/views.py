@@ -131,30 +131,50 @@ def json_producer_info(request, producer_id):
     data = serializers.serialize("json", Party.objects.filter(pk=producer_id))
     return HttpResponse(data, mimetype="text/json-comment-filtered")
 
-@login_required
+#@login_required
 def plan_selection(request):
     if request.method == "POST":
+        if request.POST.get('submit-supply-demand'):
+            sdform = DateRangeSelectionForm(request.POST)  
+            if sdform.is_valid():
+                data = sdform.cleaned_data
+                from_date = data['from_date'].strftime('%Y_%m_%d')
+                to_date = data['to_date'].strftime('%Y_%m_%d')
+                return HttpResponseRedirect('/%s/%s/%s/'
+                    % ('supplydemand', from_date, to_date))
+        
         psform = PlanSelectionForm(request.POST)  
         if psform.is_valid():
             psdata = psform.cleaned_data
-            producer_id = psdata['producer']
+            member_id = psdata['member']
             return HttpResponseRedirect('/%s/%s/'
-               % ('planupdate', producer_id))
+               % ('planupdate', member_id))
     else:
         psform = PlanSelectionForm()
-    return render_to_response('distribution/plan_selection.html', {'header_form': psform})
+        thisdate = datetime.date.today()
+        init = {
+            'from_date': thisdate,
+            'to_date': thisdate + datetime.timedelta(weeks=16),
+        }
+        sdform = DateRangeSelectionForm(initial=init)
+    return render_to_response('distribution/plan_selection.html', 
+            {'header_form': psform,
+             'sdform': sdform,})
 
 @login_required
 def plan_update(request, prod_id):
     try:
-        producer = Party.objects.get(pk=prod_id)
+        member = Party.objects.get(pk=prod_id)
     except Party.DoesNotExist:
         raise Http404
     if request.method == "POST":
-        itemforms = create_plan_forms(producer, request.POST)     
+        itemforms = create_plan_forms(member, request.POST)     
         if all([itemform.is_valid() for itemform in itemforms]):
-            producer_id = request.POST['producer-id']
-            producer = Producer.objects.get(pk=producer_id)
+            member_id = request.POST['member-id']
+            member = Party.objects.get(pk=member_id)
+            role = "producer"
+            if member.is_customer():
+                role = "consumer"
             for itemform in itemforms:
                 data = itemform.cleaned_data
                 prodname = data['prodname']
@@ -173,18 +193,19 @@ def plan_update(request, prod_id):
                         prodname = data['prodname']
                         product = Product.objects.get(short_name__exact=prodname)
                         item = itemform.save(commit=False)
-                        item.producer = producer
+                        item.member = member
                         item.product = product
+                        item.role = role
                         item.save()
             return HttpResponseRedirect('/%s/%s/'
-               % ('producerplan', producer_id))
-        #else:
-        #    for itemform in itemforms:
-        #        if not itemform.is_valid():
-        #            print '**invalid**', itemform
+               % ('producerplan', member_id))
+        else:
+            for itemform in itemforms:
+                if not itemform.is_valid():
+                    print '**invalid**', itemform
     else:
-        itemforms = create_plan_forms(producer)
-    return render_to_response('distribution/plan_update.html', {'producer': producer, 'item_forms': itemforms})
+        itemforms = create_plan_forms(member)
+    return render_to_response('distribution/plan_update.html', {'member': member, 'item_forms': itemforms})
 
 @login_required
 def inventory_selection(request):
@@ -829,15 +850,44 @@ def order_with_lots(request, order_id):
 
 def producerplan(request, prod_id):
     try:
-        producer = Party.objects.get(pk=prod_id)
+        member = Party.objects.get(pk=prod_id)
     except Party.DoesNotExist:
         raise Http404
-    plans = list(ProductPlan.objects.filter(producer=producer))
+    plans = list(ProductPlan.objects.filter(member=member))
     for plan in plans:
         plan.parents = plan.product.parent_string()
     plans.sort(lambda x, y: cmp(x.parents, y.parents))
         
-    return render_to_response('distribution/producer_plan.html', {'producer': producer, 'plans': plans })
+    return render_to_response('distribution/producer_plan.html', {'member': member, 'plans': plans })
+
+def supply_and_demand(request, from_date, to_date):
+    try:
+        from_date = datetime.datetime(*time.strptime(from_date, '%Y_%m_%d')[0:5]).date()
+        to_date = datetime.datetime(*time.strptime(to_date, '%Y_%m_%d')[0:5]).date()
+    except ValueError:
+            raise Http404
+    sdtable = supply_demand_table(from_date, to_date)
+    return render_to_response('distribution/supply_demand.html', 
+        {
+            'from_date': from_date,
+            'to_date': to_date,
+            'sdtable': sdtable,
+        })
+
+
+def supply_and_demand_week(request, week_date):
+    try:
+        week_date = datetime.datetime(*time.strptime(week_date, '%Y_%m_%d')[0:5]).date()
+    except ValueError:
+            raise Http404
+    sdtable = supply_demand_week(week_date)
+    return render_to_response('distribution/supply_demand_week.html', 
+        {
+            'week_date': week_date,
+            'sdtable': sdtable,
+        })
+
+
 
 def produceravail(request, prod_id, year, month, day):
     availdate = datetime.date(int(year), int(month), int(day))
@@ -1432,7 +1482,7 @@ def all_producer_payments(from_date, to_date, due, paid_member):
         prod_damages = damage_producers[prod]
         damage_total_due = Decimal("0")
         damage_total_paid = Decimal("0")
-        for damage in prod_damages: 
+        for damage in prod_damages:
             due_to_member = damage.due_to_member()
             damage_total_due += due_to_member
             damage_total_paid += tx.paid_amount()

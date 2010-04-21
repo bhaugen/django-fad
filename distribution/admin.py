@@ -37,16 +37,18 @@ admin.site.register(Customer, CustomerAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('short_name', 'long_name', 'parent', 'price', 'expiration_days', 'pay_producer')
-    list_filter = ['parent']
+    list_display = ('short_name', 'long_name', 'parent', 'price',
+        'expiration_days', 'pay_producer', 'sellable', 'plannable')
+    list_filter = [ 'sellable', 'plannable', 'parent']
     search_fields = ['short_name', 'long_name']
     
 admin.site.register(Product, ProductAdmin)
 
 
 class ProductPlanAdmin(admin.ModelAdmin):
-    list_display = ('product', 'producer', 'from_date', 'to_date', 'quantity', 'distributor')
-    list_filter = ['producer', 'product']
+    list_display = ('product', 'member', 'role', 'from_date', 'to_date', 'quantity',
+                    'inventoried', 'distributor')
+    list_filter = ['inventoried', 'member', 'product']
     date_hierarchy = 'from_date'
     
 admin.site.register(ProductPlan, ProductPlanAdmin)

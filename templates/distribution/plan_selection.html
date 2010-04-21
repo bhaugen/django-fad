@@ -4,8 +4,21 @@
      Plan Selection
 {% endblock %}
 
+
+{% block extra_head %}
+{{ block.super }}
+    <script type="text/javascript" src="http://o.aolcdn.com/dojo/1.0/dojo/dojo.xd.js"
+        djConfig="parseOnLoad: true"></script>
+    <script type="text/javascript">
+        dojo.require("dojo.parser");
+        dojo.require("dijit.form.DateTextBox");
+    </script>
+
+{% endblock %}
+
+
 {% block header %}
-    <script type="text/javascript" src="http://o.aolcdn.com/dojo/1.1.0/dojo/dojo.xd.js"></script>
+
 
     <script type="text/javascript" >
 
@@ -30,7 +43,7 @@
 
 		dojo.addOnLoad(function()
 		{
-			dojo.connect(dojo.byId("id_producer"), "onchange", "producerChanged");
+			dojo.connect(dojo.byId("id_member"), "onchange", "producerChanged");
 		});
 
     </script>
@@ -43,31 +56,82 @@
 
 	{% include "distribution/tabnav.html" %}
 
-    <form action="." method="POST" >
-        <table>
-            <tr>
-                <th style="text-align: right; " >Producer:</th>
-                <td>
-					{{ header_form.producer }}
+	{% if request.user.is_authenticated %}
+	<div style="border: 2px solid grey; float: left; width: 30%; padding-left: 1em;">
+
+		<h4>Update Plans</h4>
+
+		<form action="." method="POST" >
+        		<table>
+		            <tr>
+                		<th style="text-align: right; " >Member:</th>
+                		<td>
+					{{ header_form.member }}
 				</td>
-				{% if header_form.producer.errors %}
+				{% if header_form.member.errors %}
 					<td style="color: red; " >
-						{{ header_form.producer.errors }}
+						{{ header_form.member.errors }}
 					</td>
 				{% endif %}
-            </tr>
-            <tr>
-                <th style="text-align: right; " >Contact:</th>
-               <td  id="contact" >---</td>
-            </tr>
-            <tr>
-                <th style="text-align: right; " >Phone:</th>
-                <td id="phone" >---</td>
-            </tr>
-        </table>
-        <p>
-            <input type="submit" value="Submit" />
-        </p>
-    </form>
+		            </tr>
+		            <tr>
+                		<th style="text-align: right; " >Contact:</th>
+               			<td  id="contact" >---</td>
+		            </tr>
+		            <tr>
+                		<th style="text-align: right; " >Phone:</th>
+		                <td id="phone" >---</td>
+		            </tr>
+		        </table>
+        		<p>
+	        	    <input name="submit-update" type="submit" value="Submit" />
+        		</p>
+	    </form>
+
+    	</div>
+	{% endif %}
+
+	<div style="border: 2px solid grey; float: left; width: 30%; padding-left: 1em;">
+		<h4>Supply and Demand Table</h4>
+
+		<form action="." method="POST" >
+
+        		<table>
+		            <tr>
+                		<th style="text-align: right; " >From Date:</th>
+                		<td>
+					{{ sdform.from_date }}
+				</td>
+				{% if sdform.from_date.errors %}
+					<td style="color: red; " >
+						{{sdform.from_date.errors }}
+					</td>
+				{% endif %}
+				</tr>
+				<tr>
+                		<th style="text-align: right; " >To Date:</th>
+                		<td>
+					{{ sdform.to_date }}
+				</td>
+				{% if sdform.to_date.errors %}
+					<td style="color: red; " >
+						{{sdform.to_date.errors }}
+					</td>
+				{% endif %}
+		            </tr>
+
+		        </table>
+
+	        	<p>
+		            <input name="submit-supply-demand" type="submit" value="Submit" />
+        		</p>
+	    </form>
+
+
+
+	</div>
+
+
+	<div style="clear: both;" />
 </div>
 {% endblock %}

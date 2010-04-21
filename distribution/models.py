@@ -114,9 +114,9 @@ class DeliveryDistributor(object):
 class SubclassingQuerySet(QuerySet):
     def __getitem__(self, k):
         result = super(SubclassingQuerySet, self).__getitem__(k)
-        if isinstance(result, models.Model) :
+        if isinstance(result, models.Model):
             return result.as_leaf_class()
-        else :
+        else:
             return result
     def __iter__(self):
         for item in super(SubclassingQuerySet, self).__iter__():
@@ -143,6 +143,17 @@ class PartyManager(models.Manager):
             if isinstance(party.as_leaf_class(), Distributor):
                 dists.append(party)
         return dists
+
+    def all_planners(self):
+        parties = Party.objects.all()
+        dists = []
+        for party in parties:
+            if isinstance(party.as_leaf_class(), Producer):
+                dists.append(party)
+            if isinstance(party.as_leaf_class(), Customer):
+                dists.append(party)
+        return dists
+
 
     def payable_members(self):
         parties = Party.objects.all().exclude(pk=1)
@@ -194,6 +205,19 @@ class Party(models.Model):
             return model.objects.get(id=self.id)
         else:
             return self
+
+    def is_customer(self):
+        if isinstance(self.as_leaf_class(), Customer):
+            return True
+        else:
+            return False
+
+    def is_producer(self):
+        if isinstance(self.as_leaf_class(), Producer):
+            return True
+        else:
+            return False
+
         
     def save(self, force_insert=False, force_update=False):
         #import pdb; pdb.set_trace()
@@ -575,25 +599,104 @@ class Product(models.Model):
     class Meta:
         ordering = ('short_name',)
 
+PLAN_ROLE_CHOICES = (
+    ('consumer', 'consumer'),
+    ('producer', 'producer'),
+)
+
+
+class SupplyDemandTable(object):
+    def __init__(self, columns, rows):
+         self.columns = columns
+         self.rows = rows
+
+def supply_demand_table(from_date, to_date):
+    plans = ProductPlan.objects.filter(product__sellable=True)
+    rows = {}    
+    for plan in plans:
+        wkdate = from_date
+        row = []
+        while wkdate <= to_date:
+            row.append(Decimal("0"))
+            wkdate = wkdate + datetime.timedelta(days=7)
+        row.insert(0, plan.product)
+        rows.setdefault(plan.product, row)
+        wkdate = from_date
+        week = 0
+        while wkdate <= to_date:
+            if plan.from_date <= wkdate and plan.to_date >= wkdate:
+                if plan.role == "producer":
+                    rows[plan.product][week + 1] += plan.quantity
+                else:
+                    rows[plan.product][week + 1] -= plan.quantity
+            wkdate = wkdate + datetime.timedelta(days=7)
+            week += 1
+    label = "Product/Weeks"
+    columns = [label]
+    wkdate = from_date
+    while wkdate <= to_date:
+        #columns.append(wkdate.strftime('%m-%d'))
+        columns.append(wkdate)
+        wkdate = wkdate + datetime.timedelta(days=7)
+    sdtable = SupplyDemandTable(columns, rows.values())
+    return sdtable
+
+def supply_demand_week(week_date):
+    plans = ProductPlan.objects.filter(
+        product__sellable=True,
+        from_date__lte=week_date,
+        to_date__gte=week_date,
+    )
+    columns = []
+    rows = {}
+    for plan in plans:
+        columns.append(plan.member)
+    columns = list(set(columns))
+    columns.sort(lambda x, y: cmp(x.short_name, y.short_name))
+    columns.insert(0, "Product/Member")
+    columns.append("Balance")
+    for plan in plans:
+        if not rows.get(plan.product):
+            row = []
+            for i in range(0, len(columns)-1):
+                row.append(Decimal("0"))
+            row.insert(0, plan.product)
+            rows[plan.product] = row
+        if plan.role == "producer":
+            rows[plan.product][columns.index(plan.member)] += plan.quantity
+            rows[plan.product][len(columns)-1] += plan.quantity
+        else:
+            rows[plan.product][columns.index(plan.member)] -= plan.quantity
+            rows[plan.product][len(columns)-1] -= plan.quantity
+    rows = rows.values()
+    rows.sort(lambda x, y: cmp(x[0].short_name, y[0].short_name))
+    sdtable = SupplyDemandTable(columns, rows)
+    return sdtable
+
 
 class ProductPlan(models.Model):
-    producer = models.ForeignKey(Party, related_name="product_plans") 
+    member = models.ForeignKey(Party, related_name="product_plans") 
     product = models.ForeignKey(Product, limit_choices_to = {'plannable': True})
     from_date = models.DateField()
     to_date = models.DateField()
-    quantity = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
+    quantity = models.DecimalField(max_digits=8, decimal_places=2,
+        default=Decimal('0'), verbose_name='Qty per week')
+    role = models.CharField(max_length=12, choices=PLAN_ROLE_CHOICES,
+                            default="producer")
+    inventoried = models.BooleanField(default=True,
+        help_text="If not inventoried, the planned qty per week will be used for ordering")
     distributor = models.ForeignKey(Party, related_name="plan_distributors", blank=True, null=True)
     
     def __unicode__(self):
         return " ".join([
-            self.producer.short_name,
+            self.member.short_name,
             self.product.short_name,
             self.from_date.strftime('%Y-%m-%d'),
             self.from_date.strftime('%Y-%m-%d'),
             str(self.quantity)])
         
     class Meta:
-        ordering = ('product', 'producer', 'from_date')
+        ordering = ('product', 'member', 'from_date')
         
 
 class InventoryItem(models.Model):

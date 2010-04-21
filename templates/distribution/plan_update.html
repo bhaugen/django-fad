@@ -91,19 +91,19 @@
 	{% include "distribution/tabnav.html" %}
 
     <form action="." method="POST" >
-		<input name='producer-id' type='hidden' value='{{ producer.id }}' />
+	<input name='member-id' type='hidden' value='{{ member.id }}' />
         <table>
             <tr>
-                <th style="text-align: right; " >Producer:</th>
-                <td>{{ producer.short_name }} - {{ producer.long_name }}</td>
+                <th style="text-align: right; " >Member:</th>
+                <td>{{ member.short_name }} - {{ member.long_name }}</td>
             </tr>
             <tr>
                 <th style="text-align: right; " >Contact:</th>
-               <td  id="contact" >{{producer.contact}}</td>
+               <td  id="contact" >{{member.contact}}</td>
             </tr>
             <tr>
                 <th style="text-align: right; " >Phone:</th>
-                <td id="phone" >{{producer.phone}}</td>
+                <td id="phone" >{{member.phone}}</td>
             </tr>
         </table>
 
@@ -111,21 +111,28 @@
 			<tr>
                 <th>Category</th>
                 <th>Product</th>
-				<th>From Date</th>
-				<th>To Date</th>
-                <th>Quantity</th>
-				<th>Distributor</th>
+		<th>From Date</th>
+		<th>To Date</th>
+		<th>Qty Per Week</th>
+		{% if member.is_producer %}
+			<th>Inventoried?</th>
+		{% endif %}
+		<th>Distributor</th>
             </tr>
             {% for item_form in item_forms %}
                  <tr>
                     <td class="read-only-td"  > {{ item_form.parents }} </td>
                     <td class="read-only-td" > {{ item_form.long_name }} </td>
                     <td> {{ item_form.from_date }} </td>
-					<td> {{ item_form.to_date }} </td>
-                    <td> {{ item_form.quantity }} </td>
-					 <td>{{ item_form.distributor }}</td>
+		    <td> {{ item_form.to_date }} </td>
+		    <td> {{ item_form.quantity }} </td>
+		    {% if member.is_producer %}
+		    	<td> {{ item_form.inventoried }} </td>
+
+		    {% endif %}
+		    <td>{{ item_form.distributor }}</td>
                     {{ item_form.item_id }}
-					{{ item_form.prodname }}
+		    {{ item_form.prodname }}
                 </tr>
            {% endfor %} 
         </table>

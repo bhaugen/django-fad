@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% load humanize %}
+
+{% block title %}
+     Supply and Demand Table
+{% endblock %}
+
+{% block header %}
+
+{% endblock %}
+
+{% block content %}
+
+<div class="plan-update">
+
+
+	{% include "distribution/tabnav.html" %}
+
+	<h2>Weekly Supply minus Demand from {{ from_date }} to {{ to_date }}</h2>
+
+	<p><i>You may drill down into any column</i></p>
+
+	<table class="ga-event-table" >
+		<tr>
+			{% for column in sdtable.columns %}
+				{% if forloop.first %}
+					<th style="text-align: right;" >{{ column }}</th>
+				{% else %}
+				<th><a href="{% url supply_and_demand_week week_date=column|date:'Y_m_d' %}">{{ column|date:"n-j" }}</a></th>
+				{% endif %}
+			{% endfor %}
+		</tr>
+		{% for row in sdtable.rows %}
+			<tr>
+				{% for cell in row %}
+					{% if forloop.first %}
+						<th style="text-align: left;" >{{ cell }}</th>
+					{% else %}
+						<td style="text-align: right;" >{{ cell|intcomma }}</td>
+					{% endif %}
+				{% endfor %}			
+			</tr>
+		{% endfor %}
+
+	</table>
+
+</div>
+ 
+{% endblock %} 
+

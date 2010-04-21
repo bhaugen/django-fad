@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% load humanize %}
+
+{% block title %}
+     Supply and Demand Week
+{% endblock %}
+
+{% block header %}
+
+{% endblock %}
+
+{% block content %}
+
+<div class="plan-update">
+
+
+	{% include "distribution/tabnav.html" %}
+
+	<h2>Supply minus Demand for week of {{ week_date }}</h2>
+
+	<table class="ga-event-table" >
+
+		<tr>
+			{% for column in sdtable.columns %}
+				{% if forloop.first %}
+					<th style="text-align: right;" >{{ column }}</th>
+				{% else %}
+				<th>{{ column }}</th>
+				{% endif %}
+			{% endfor %}
+		</tr>
+		{% for row in sdtable.rows %}
+			<tr>
+				{% for cell in row %}
+					{% if forloop.first %}
+						<th style="text-align: left;" >{{ cell }}</th>
+					{% else %}
+						<td style="text-align: right;" >{{ cell|intcomma }}</td>
+					{% endif %}
+				{% endfor %}			
+			</tr>
+		{% endfor %}
+
+	</table>
+
+</div>
+
+{% endblock %}
+

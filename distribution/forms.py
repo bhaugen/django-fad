@@ -254,17 +254,28 @@ class PaymentSelectionForm(forms.Form):
         super(PaymentSelectionForm, self).__init__(*args, **kwargs)
         self.fields['producer'].choices = [('0', 'All')] + [(prod.id, prod.short_name) for prod in Party.subclass_objects.payable_members()]
         
+
 class StatementSelectionForm(forms.Form):
     from_date = forms.DateField(
         widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
     to_date = forms.DateField(
         widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
         
+
+class DateRangeSelectionForm(forms.Form):
+    from_date = forms.DateField(
+        widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
+    to_date = forms.DateField(
+        widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
+
+
+
 class PlanSelectionForm(forms.Form):
-    producer = forms.ChoiceField()
+    member = forms.ChoiceField()
     def __init__(self, *args, **kwargs):
         super(PlanSelectionForm, self).__init__(*args, **kwargs)
-        self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Producer.objects.all()]
+        self.fields['member'].choices = [('', '----------')] + [
+            (p.id, p.short_name) for p in Party.subclass_objects.all_planners()]
 
         
 class PlanForm(forms.ModelForm):
@@ -274,24 +285,28 @@ class PlanForm(forms.ModelForm):
     to_date = forms.DateField(widget=forms.TextInput(attrs={'size': '10'}))
     quantity = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
     item_id = forms.CharField(required=False, widget=forms.HiddenInput)
+    inventoried = forms.BooleanField(required=False)
 
     class Meta:
         model = ProductPlan
-        exclude = ('producer', 'product')
+        exclude = ('member', 'product', 'role')
         
-    def __init__(self, producer, *args, **kwargs):
+    def __init__(self, member, *args, **kwargs):
         super(PlanForm, self).__init__(*args, **kwargs)
         sublist = list(Distributor.objects.all())
-        sublist.append(producer)
+        sublist.append(member)
         #sublist.sort(lambda x, y: cmp(y.__class__, x.__class__))
         self.fields['distributor'].choices = [(party.id, party.short_name) for party in sublist]
         
-def create_plan_forms(producer, data=None):
-    items = ProductPlan.objects.filter(producer=producer)
+def create_plan_forms(member, data=None):
+    items = ProductPlan.objects.filter(member=member)
     item_dict = {}
     for item in items:
         item_dict[item.product.id] = item
-    prods = list(Product.objects.filter(plannable=True))
+    if member.is_customer():
+        prods = list(Product.objects.filter(sellable=True))
+    else:
+        prods = list(Product.objects.filter(plannable=True))
     for prod in prods:
         prod.parents = prod.parent_string()
     prods.sort(lambda x, y: cmp(x.parents, y.parents))
@@ -302,16 +317,17 @@ def create_plan_forms(producer, data=None):
         except KeyError:
             item = False
         if item:
-            this_form = PlanForm(producer=producer, data=data, prefix=prod.short_name, initial={
+            this_form = PlanForm(member=member, data=data, prefix=prod.short_name, initial={
                 'item_id': item.id,
                 'parents': prod.parents, 
                 'prodname': prod.short_name,
                 'from_date': item.from_date,
                 'to_date': item.to_date,
                 'quantity': item.quantity,
-                'distributor': item.distributor.id })
+                'distributor': item.distributor.id,
+                'inventoried': item.inventoried})
         else:
-            this_form = PlanForm(producer=producer, data=data, prefix=prod.short_name, initial={
+            this_form = PlanForm(member=member, data=data, prefix=prod.short_name, initial={
                 'parents': prod.parents, 
                 'prodname': prod.short_name, 
                 'from_date': datetime.date.today(),
