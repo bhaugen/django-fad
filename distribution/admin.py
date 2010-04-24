@@ -38,8 +38,8 @@ admin.site.register(Customer, CustomerAdmin)
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = ('short_name', 'long_name', 'parent', 'price',
-        'expiration_days', 'pay_producer', 'sellable', 'plannable')
-    list_filter = [ 'sellable', 'plannable', 'parent']
+        'expiration_days', 'pay_producer', 'sellable', 'plannable', 'stockable')
+    list_filter = [ 'sellable', 'plannable', 'stockable', 'parent']
     search_fields = ['short_name', 'long_name']
     
 admin.site.register(Product, ProductAdmin)

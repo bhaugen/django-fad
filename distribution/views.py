@@ -1895,7 +1895,7 @@ def new_process(request, process_type_id):
     expired_date = weekstart + datetime.timedelta(days=5)
     pt = get_object_or_404(ProcessType, id=process_type_id)
 
-    input_types = pt.input_type.plannable_children()
+    input_types = pt.input_type.stockable_children()
     input_select_form = None
     input_create_form = None
     input_lot_qties = []
@@ -1923,7 +1923,7 @@ def new_process(request, process_type_id):
     ServiceFormSet = formset_factory(ProcessServiceForm, extra=steps)
     service_formset = ServiceFormSet(data=request.POST or None, prefix="service")
 
-    output_types = pt.output_type.plannable_children()
+    output_types = pt.output_type.stockable_children()
 
     output_label = "Output Lot"
     output_formset = None

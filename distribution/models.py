@@ -476,6 +476,8 @@ class Product(models.Model):
         help_text='Should this product appear in Order form?')
     plannable = models.BooleanField(default=True,
         help_text='Should this product appear in Plan form?')
+    stockable = models.BooleanField(default=True,
+        help_text='Should this product be stored as Inventory Items?')
     is_parent = models.BooleanField(default=False,
         help_text='Should this product appear in parent selections?')
     price = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal(0))
@@ -596,6 +598,15 @@ class Product(models.Model):
                 plannables.append(kid)
         return plannables
 
+    def stockable_children(self):
+        kids = flattened_children(self, Product.objects.all(), [])
+        stockables = []
+        for kid in kids:
+            if kid.stockable:
+                stockables.append(kid)
+        return stockables
+
+
     class Meta:
         ordering = ('short_name',)
 
@@ -702,7 +713,7 @@ class ProductPlan(models.Model):
 class InventoryItem(models.Model):
     producer = models.ForeignKey(Party, related_name="inventory_items") 
     custodian = models.ForeignKey(Party, blank=True, null=True, related_name="custody_items")
-    product = models.ForeignKey(Product, limit_choices_to = {'plannable': True})
+    product = models.ForeignKey(Product, limit_choices_to = {'stockable': True})
     inventory_date = models.DateField()
     expiration_date = models.DateField()
     planned = models.DecimalField("Ready", max_digits=8, decimal_places=2, default=Decimal('0'))
