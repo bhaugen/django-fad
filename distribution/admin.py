@@ -55,7 +55,7 @@ admin.site.register(ProductPlan, ProductPlanAdmin)
 
 
 class InventoryItemAdmin(admin.ModelAdmin):
-    list_display = ('product', 'producer', 'custodian', 'inventory_date', 'expiration_date', 'planned', 'remaining', 'received', 'onhand', 'notes')
+    list_display = ('product', 'producer', 'field_id', 'custodian', 'inventory_date', 'expiration_date', 'planned', 'remaining', 'received', 'onhand', 'notes')
     list_filter = ['producer', 'product']
     search_fields = ['producer__short_name, product__short_name']
     date_hierarchy = 'inventory_date'

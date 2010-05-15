@@ -1,9 +1,12 @@
 from django import forms
 from django.http import Http404
 from django.db.models.query import QuerySet
+from django.forms.formsets import formset_factory
+
 import datetime
-from models import *
 import itertools
+
+from models import *
 
 
 class CustomerForm(forms.ModelForm):
@@ -339,6 +342,7 @@ def create_plan_forms(member, data=None):
 
 class InventoryItemForm(forms.ModelForm):
     prodname = forms.CharField(widget=forms.HiddenInput)
+    field_id = forms.CharField(required=False, widget=forms.TextInput(attrs={'size': '8', 'value': ''}))
     inventory_date = forms.DateField(widget=forms.TextInput(attrs={'size': '10'}))
     planned = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
     received = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
@@ -367,7 +371,7 @@ def create_inventory_item_forms(producer, avail_date, data=None):
     for item in items:
         item_dict[item.product.id] = item
     plans = ProductPlan.objects.filter(
-        producer=producer, 
+        member=producer, 
         from_date__lte=avail_date, 
         to_date__gte=saturday)
     form_list = []
@@ -383,7 +387,7 @@ def create_inventory_item_forms(producer, avail_date, data=None):
             the_form = InventoryItemForm(data, prefix=plan.product.short_name, initial={
                 'item_id': item.id,
                 'prodname': plan.product.short_name, 
-                #'description': plan.product.long_name,
+                'field_id': item.field_id,
                 'custodian': custodian_id,
                 'inventory_date': item.inventory_date,
                 'planned': item.planned,
@@ -423,6 +427,93 @@ class MeatItemForm(forms.ModelForm):
         self.fields['processor'].choices = [('', '------------')] + [(proc.id, proc.long_name) for proc in Processor.objects.all()]
 
 
+class ProductShortForm(forms.Form):
+    total_ordered = forms.DecimalField(widget=forms.TextInput
+        (attrs={'readonly':'true', 'class': 'read-only-input', 'size': '6', 'style': 'text-align: right;'}))
+    quantity_short = forms.DecimalField(widget=forms.TextInput
+        (attrs={'readonly':'true', 'class': 'read-only-input short', 'size': '6', 'style': 'text-align: right;'}))
+
+
+class OrderItemShortForm(forms.ModelForm):
+    item_id = forms.CharField(required=False, widget=forms.HiddenInput)
+    quantity = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field order-qty', 'size': '8'}))
+    
+    class Meta:
+        model = OrderItem
+        fields = ('quantity', )
+
+class ShortsRow(object):
+    def __init__(self, product, total_avail, product_form, cells, item_forms):
+         self.product = product
+         self.total_avail = total_avail
+         self.product_form = product_form
+         self.cells = cells
+         self.item_forms = item_forms
+
+
+class ShortsTable(object):
+    def __init__(self, columns, rows):
+         self.columns = columns
+         self.rows = rows
+
+
+def create_shorts_table(order_date, data=None):
+    shorts_list = shorts_for_date(order_date)
+    orders = []
+    for short in shorts_list:
+        for oi in short.order_items:
+            orders.append(oi.order)
+    orders = list(set(orders))
+    cols = ["Product", "Avail", "Ordered", "Short"]
+    #cols.extend(orders)
+    for order in orders:
+        cols.append(order.customer)
+    rows = []
+    for short in shorts_list:
+        product_init = {
+            "total_ordered": short.total_ordered,
+            "quantity_short": short.quantity_short,
+        }
+        product_form = ProductShortForm(data, prefix=str(short.product.id), initial=product_init)
+        row = ShortsRow(short.product, short.total_avail, product_form, [], [])
+        cells = []
+        for order in orders:
+            cells.append("")
+        for oi in short.order_items:
+            cell = orders.index(oi.order)
+            cell_init = {
+                "item_id": oi.id,
+                "quantity": oi.quantity,
+            }
+            pref = "-".join([str(short.product.id), str(oi.id)])
+            item_form = OrderItemShortForm(data, prefix=pref, initial=cell_init)
+            cells[cell] = item_form
+            row.item_forms.append(item_form)
+        row.cells.extend(cells)
+        rows.append(row)
+    return ShortsTable(cols, rows)
+
+def create_short_forms(order_date):
+    shorts_list = shorts_for_date(order_date)
+    orders = []
+    for short in shorts_list:
+        for oi in short.order_items:
+            orders.append(oi.order)
+    orders = list(set(orders))
+    cols = ["Product", "Avail", "Ordered", "Short"]
+    cols.extend(orders)
+    rows = []
+    for short in shorts_list:
+        row = [short.product, short.total_avail, short.total_ordered, short.quantity_short]
+        for order in orders:
+            row.append("")
+        for oi in short.order_items:
+            row_cell = orders.index(oi.order) + 4
+            row[row_cell] = oi.quantity
+        rows.append(row)
+    return ShortsTable(cols, rows)
+    
+
 class OrderByLotForm(forms.ModelForm):
     order_item_id = forms.CharField(required=False, widget=forms.HiddenInput)
     lot_id = forms.CharField(widget=forms.HiddenInput)
@@ -455,8 +546,8 @@ class DeliveryItemForm(forms.Form):
 
 
 class DeliveryForm(forms.ModelForm):
-    #quantity = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '8'}))
     amount = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '8'}))
+
     class Meta:
         model = InventoryTransaction
         exclude = ('from_whom', 'to_whom', 'process', 'unit_price', 'order_item', 'transaction_type', 'transaction_date', 'notes')
@@ -500,8 +591,8 @@ def create_delivery_forms(thisdate, customer, data=None):
                 d += 1
             if delivery_count < 4:
                 extras = [DeliveryForm
-                    (data, prefix=str(oi.id) + str(x), instance=InventoryTransaction()) 
-                    for x in range(delivery_count, field_set_count)]
+                    (data, prefix=str(oi.id) + str(x), 
+                     instance=InventoryTransaction()) for x in range(delivery_count, field_set_count)]
                 for df in extras:
                     df.fields['inventory_item'].choices = choices
                 dtf.delivery_forms.extend(extras)

@@ -38,8 +38,16 @@
 				{% endif %}
             </tr>
 		</table>
-        <p>
-            <input type="submit" value="Submit" />
+        <p style="padding-left: 5em;">
+	<input name="submit-order-table" type="submit" value="Order Table" />
+	{% if show_shorts %}
+	&nbsp;&nbsp;
+	<input name="submit-shorts" type="submit" value="Shorts" />
+	&nbsp;&nbsp;
+	<input name="submit-short-changes" type="submit" value="Short Changes" />
+	{% endif %}
+
+
         </p>
     </form>
 </div>

@@ -711,7 +711,8 @@ class ProductPlan(models.Model):
         
 
 class InventoryItem(models.Model):
-    producer = models.ForeignKey(Party, related_name="inventory_items") 
+    producer = models.ForeignKey(Party, related_name="inventory_items")
+    field_id = models.CharField("Field", max_length=12, blank=True)
     custodian = models.ForeignKey(Party, blank=True, null=True, related_name="custody_items")
     product = models.ForeignKey(Product, limit_choices_to = {'stockable': True})
     inventory_date = models.DateField()
@@ -1014,11 +1015,37 @@ class Order(models.Model):
     class Meta:
         ordering = ('order_date', 'customer')
 
+class ShortOrderItems(object):
+    def __init__(self, product, total_avail, total_ordered, quantity_short, order_items):
+         self.product = product
+         self.total_avail = total_avail
+         self.total_ordered = total_ordered
+         self.quantity_short = quantity_short
+         self.order_items = order_items
+
+
+def shorts_for_date(order_date):
+    shorts = []
+    maybes = {}
+    for oi in OrderItem.objects.filter(order__order_date=order_date):
+        if not oi.product in maybes:
+            maybes[oi.product] = ShortOrderItems(oi.product, 
+                oi.product.total_avail(order_date), Decimal("0"), Decimal("0"), [])
+        maybes[oi.product].total_ordered += oi.quantity      
+        maybes[oi.product].order_items.append(oi)
+    for maybe in maybes:
+        qty_short = maybes[maybe].total_ordered - maybes[maybe].total_avail
+        if qty_short > Decimal("0"):
+            maybes[maybe].quantity_short = qty_short
+            shorts.append(maybes[maybe])
+    return shorts
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order)
     product = models.ForeignKey(Product)
     quantity = models.DecimalField(max_digits=8, decimal_places=2)
+    orig_qty = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0'))
     unit_price = models.DecimalField(max_digits=8, decimal_places=2)
     fee = models.DecimalField(max_digits=3, decimal_places=2, default=Decimal('0'),
         help_text='Fee is a decimal fraction, not a percentage - for example, .05 instead of 5%')

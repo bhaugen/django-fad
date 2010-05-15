@@ -55,8 +55,7 @@
 <div class="plan-update">
 
 	{% include "distribution/tabnav.html" %}
-
-	{% if request.user.is_authenticated %}
+	{% if user.is_authenticated %}
 	<div style="border: 2px solid grey; float: left; width: 30%; padding-left: 1em;">
 
 		<h4>Update Plans</h4>

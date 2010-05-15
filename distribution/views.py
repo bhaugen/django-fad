@@ -121,6 +121,7 @@ def send_order_notices(request):
                 request.user.message_set.create(message="Order Notice emails have been sent")
         return HttpResponseRedirect(request.POST["next"])
 
+
 def json_customer_info(request, customer_id):
     # Note: serializer requires an iterable, not a single object. Thus filter rather than get.
     data = serializers.serialize("json", Party.objects.filter(pk=customer_id))
@@ -159,7 +160,7 @@ def plan_selection(request):
         sdform = DateRangeSelectionForm(initial=init)
     return render_to_response('distribution/plan_selection.html', 
             {'header_form': psform,
-             'sdform': sdform,})
+             'sdform': sdform,}, context_instance=RequestContext(request))
 
 @login_required
 def plan_update(request, prod_id):
@@ -762,15 +763,26 @@ def order_table_selection(request):
         if dsform.is_valid():
             dsdata = dsform.cleaned_data
             ord_date = dsdata['selected_date']
-            if ordering_by_lot():
+            if request.POST.get('submit-order-table'):
+                if ordering_by_lot():
+                    return HttpResponseRedirect('/%s/%s/%s/%s/'
+                        % ('ordertable', ord_date.year, ord_date.month, ord_date.day))
+                else:
+                    return HttpResponseRedirect('/%s/%s/%s/%s/'
+                        % ('ordertablebyproduct', ord_date.year, ord_date.month, ord_date.day))
+            elif request.POST.get('submit-short-changes'):
                 return HttpResponseRedirect('/%s/%s/%s/%s/'
-                    % ('ordertable', ord_date.year, ord_date.month, ord_date.day))
+                    % ('shortschanges', ord_date.year, ord_date.month, ord_date.day))
             else:
                 return HttpResponseRedirect('/%s/%s/%s/%s/'
-                    % ('ordertablebyproduct', ord_date.year, ord_date.month, ord_date.day))
+                    % ('shorts', ord_date.year, ord_date.month, ord_date.day))
     else:
         dsform = DateSelectionForm(initial=init)
-    return render_to_response('distribution/order_table_selection.html', {'dsform': dsform,})
+    return render_to_response('distribution/order_table_selection.html', 
+            {
+                'dsform': dsform,
+                'show_shorts': not ordering_by_lot(),
+            })
 
 ORDER_HEADINGS = ["Customer", "Order", "Lot", "Custodian", "Order Qty"]
 
@@ -823,7 +835,7 @@ def order_csv_by_product(request, order_date):
     thisdate = datetime.datetime(*time.strptime(order_date, '%Y_%m_%d')[0:5]).date()
     response = HttpResponse(mimetype='text/csv')
     response['Content-Disposition'] = 'attachment; filename=ordersheet.csv'
-    product_heads = ['Item', 'Description', 'Producers', 'Avail', 'Ordered']
+    product_heads = ['Category', 'Product', 'Producers', 'Avail', 'Ordered']
     order_heads = order_headings_by_product(thisdate, links=False)
     heading_list = product_heads + order_heads
     item_list = order_item_rows(thisdate)
@@ -833,6 +845,76 @@ def order_csv_by_product(request, order_date):
         writer.writerow(item)
     return response
 
+@login_required
+def shorts(request, year, month, day):
+    thisdate = datetime.date(int(year), int(month), int(day))
+    date_string = thisdate.strftime('%Y_%m_%d')
+    shorts_table = create_shorts_table(thisdate, data=request.POST or None)
+    #print shorts_table.rows[0].item_forms[0].as_table()
+    if request.method == "POST":
+        #import pdb; pdb.set_trace()
+        changed_items = []
+        for row in shorts_table.rows:
+            for item_form in row.item_forms:
+                if item_form.is_valid():
+                    item_data = item_form.cleaned_data
+                    qty = item_data["quantity"]
+                    id = item_data["item_id"]
+                    #print "qty:", qty, "id:", id
+                    item = OrderItem.objects.get(pk=id)
+                    if item.quantity != qty:
+                        if not item.orig_qty:
+                            item.orig_qty = item.quantity
+                        item.quantity = qty
+                        item.save()
+                        changed_items.append(item)
+        return HttpResponseRedirect('/%s/%s/%s/%s/'
+            % ('shortschanges', thisdate.year, thisdate.month, thisdate.day))
+    return render_to_response('distribution/shorts.html', 
+        {'date': thisdate, 
+         'shorts_table': shorts_table  })
+
+def shorts_changes(request, year, month, day):
+    thisdate = datetime.date(int(year), int(month), int(day))
+    changed_items = OrderItem.objects.filter(
+        order__order_date=thisdate,
+        orig_qty__gte=Decimal("0")
+    )
+    return render_to_response('distribution/shorts_changes.html', 
+        {'date': thisdate, 
+         'changed_items': changed_items  })
+
+@login_required
+def send_short_change_notices(request):
+    #import pdb; pdb.set_trace()
+    if request.method == "POST":
+        if notification:
+            try:
+                food_network = FoodNetwork.objects.get(pk=1)
+                food_network_name = food_network.long_name
+            except FoodNetwork.DoesNotExist:
+                request.user.message_set.create(message="Food Network does not exist")
+
+            if food_network:
+                thisdate = current_week()
+                changed_items = OrderItem.objects.filter(
+                    order__order_date=thisdate,
+                    orig_qty__gte=Decimal("0")
+                )
+                orders = {}
+                for item in changed_items:
+                    if not item.order in orders:
+                        orders[item.order] = []
+                    orders[item.order].append(item)
+
+                for order in orders:
+                    users = [order.customer, food_network]
+                    notification.send(users, "distribution_short_change_notice", {
+                        "order": order, 
+                        "items": orders[order],
+                        "order_date": thisdate})
+                request.user.message_set.create(message="Short Change emails have been sent")
+        return HttpResponseRedirect(request.POST["next"])
 
 def order(request, order_id):
     try:
@@ -952,17 +1034,32 @@ def dashboard(request):
         food_network = None
         food_network_name = ""
     
-    thisdate = current_week()
-    week_form = CurrentWeekForm(initial={"current_week": thisdate})
-
-    item_list = []
+    thisdate = ""
+    week_form = ""
     if food_network:
-        item_list = food_network.all_active_items().order_by("custodian")
+        thisdate = current_week()
+        week_form = CurrentWeekForm(initial={"current_week": thisdate})
+        by_lot = ordering_by_lot()
+        if by_lot:
+            item_list = []
+            item_list = food_network.all_active_items().order_by("custodian")
+        else:
+            prods = Product.objects.all()
+            product_dict = {}
+            for prod in prods:
+                totavail = prod.total_avail(thisdate)
+                totordered = prod.total_ordered(thisdate)
+                if totavail + totordered > 0:
+                    producers = prod.avail_producers(thisdate)
+                    product_dict[prod.short_name] = [prod.parent_string(), prod.long_name, producers, totavail, totordered]
+            item_list = product_dict.values()
+            item_list.sort()
     return render_to_response('distribution/dashboard.html', 
         {'item_list': item_list,
          'order_date': thisdate,
          'week_form': week_form,
-         'food_network_name': food_network_name,     
+         'food_network_name': food_network_name, 
+         'by_lot': by_lot,
          }, context_instance=RequestContext(request))
 
 
@@ -1986,7 +2083,8 @@ def new_process(request, process_type_id):
 
         if process:
             if service_formset:
-                if service_formset.is_valid(): # todo: shd be selective, or not?
+                 # todo: shd be selective, or not?
+                if service_formset.is_valid():
                     for service_form in service_formset.forms:
                         tx = service_form.save(commit=False)
                         tx.to_whom = foodnet
