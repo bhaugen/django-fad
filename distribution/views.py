@@ -879,7 +879,7 @@ def shorts_changes(request, year, month, day):
     thisdate = datetime.date(int(year), int(month), int(day))
     changed_items = OrderItem.objects.filter(
         order__order_date=thisdate,
-        orig_qty__gte=Decimal("0")
+        orig_qty__gt=Decimal("0")
     )
     return render_to_response('distribution/shorts_changes.html', 
         {'date': thisdate, 
