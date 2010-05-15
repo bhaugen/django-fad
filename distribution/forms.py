@@ -18,7 +18,8 @@ class CustomerForm(forms.ModelForm):
         if member_id:
             dups = Party.objects.filter(member_id=member_id)
             if dups.count():
-                raise forms.ValidationError("Someone already has that member id")
+                if not dups[0].pk == self.instance.pk:
+                    raise forms.ValidationError("Someone already has that member id")
             dups = Customer.objects.filter(member_id=member_id)
             if dups.count():
                 if not dups[0].pk == self.instance.pk:
@@ -656,7 +657,7 @@ class OrderItemForm(forms.ModelForm):
 
      class Meta:
          model = OrderItem
-         exclude = ('order', 'product', 'fee')
+         exclude = ('order', 'product', 'fee', 'orig_qty')
 
 
 def create_order_item_forms(order, availdate, orderdate, data=None):

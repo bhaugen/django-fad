@@ -329,6 +329,7 @@ def order_update(request, cust_id, year, month, day):
             ordform = OrderForm(order=order, data=request.POST, instance=order)
         else:
             ordform = OrderForm(data=request.POST)
+        #import pdb; pdb.set_trace()
         itemforms = create_order_item_forms(order, availdate, orderdate, request.POST)     
         if ordform.is_valid() and all([itemform.is_valid() for itemform in itemforms]):
             if order:
@@ -899,7 +900,7 @@ def send_short_change_notices(request):
                 thisdate = current_week()
                 changed_items = OrderItem.objects.filter(
                     order__order_date=thisdate,
-                    orig_qty__gte=Decimal("0")
+                    orig_qty__gt=Decimal("0")
                 )
                 orders = {}
                 for item in changed_items:
