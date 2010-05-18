@@ -660,6 +660,8 @@ def delivery_update(request, cust_id, year, month, day):
                 item_data = itemform.cleaned_data
                 oi_id = item_data['order_item_id']
                 order_item = OrderItem.objects.get(pk=oi_id)
+                if not customer:
+                    customer = order_item.order.customer
                 #import pdb; pdb.set_trace()
                 for delform in itemform.delivery_forms:
                     if delform.is_valid():
