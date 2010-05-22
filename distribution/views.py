@@ -234,20 +234,24 @@ def inventory_update(request, prod_id, year, month, day):
     except Party.DoesNotExist:
         raise Http404
     if request.method == "POST":
-        itemforms = create_inventory_item_forms(producer, availdate, request.POST)     
+        itemforms = create_inventory_item_forms(producer, availdate, request.POST)
+        #import pdb; pdb.set_trace()
         if all([itemform.is_valid() for itemform in itemforms]):
             producer_id = request.POST['producer-id']
             producer = Producer.objects.get(pk=producer_id)
             inv_date = request.POST['avail-date']
             for itemform in itemforms:
                 data = itemform.cleaned_data
-                prodname = data['prodname']
+                prod_id = data['prod_id']
                 item_id = data['item_id']
                 custodian = data['custodian']
                 inventory_date = data['inventory_date']
                 planned = data['planned']
                 received = data['received']
                 notes = data['notes']
+                field_id = data['field_id']
+                freeform_lot_id = data['freeform_lot_id']
+
                 if item_id:
                     item = InventoryItem.objects.get(pk=item_id)
                     item.custodian = custodian
@@ -259,19 +263,21 @@ def inventory_update(request, prod_id, year, month, day):
                     item.received = received
                     item.onhand = item.onhand + oh_change
                     item.notes = notes
+                    item.field_id = field_id
+                    item.freeform_lot_id = freeform_lot_id
                     item.save()
                 else:
                     if planned + received > 0:
-                        prodname = data['prodname']
-                        product = Product.objects.get(short_name__exact=prodname)
+                        prod_id = data['prod_id']
+                        product = Product.objects.get(pk=prod_id)
                         item = itemform.save(commit=False)
                         item.producer = producer
-                        item.custodian = custodian
-                        item.inventory_date = inventory_date
+                        #item.custodian = custodian
+                        #item.inventory_date = inventory_date
                         item.product = product
                         item.remaining = planned
                         item.onhand = received
-                        item.notes = notes
+                        #item.notes = notes
                         item.save()
             return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
                % ('produceravail', producer_id, year, month, day))

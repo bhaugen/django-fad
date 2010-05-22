@@ -711,6 +711,8 @@ class ProductPlan(models.Model):
         
 
 class InventoryItem(models.Model):
+    freeform_lot_id = models.CharField("Lot Id", max_length=64, blank=True,
+        help_text='Optional - if you do not enter a Lot Id, one will be created.')
     producer = models.ForeignKey(Party, related_name="inventory_items")
     field_id = models.CharField("Field", max_length=12, blank=True)
     custodian = models.ForeignKey(Party, blank=True, null=True, related_name="custody_items")
@@ -735,11 +737,14 @@ class InventoryItem(models.Model):
             self.inventory_date.strftime('%Y-%m-%d')])
 
     def lot_id(self):
-        return " ".join([
-            self.producer.member_id,
-            self.producer.short_name,
-            self.product.long_name,
-            self.inventory_date.strftime('%Y-%m-%d')])        
+        if self.freeform_lot_id:
+            return self.freeform_lot_id
+        else:
+            return " ".join([
+                self.producer.member_id,
+                self.producer.short_name,
+                self.product.short_name,
+                self.inventory_date.strftime('%Y-%m-%d')])        
     
     def avail_qty(self):
         if self.onhand:

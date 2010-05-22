@@ -33,13 +33,16 @@
 	<h3>Input Lot:</h3>
     <table class="ga-event-table" >
         <tr>
-             <th>Lot id</th>
-             <th>Quantity</th>
+		<th>Lot Id</th>
+		<th>Field</th>
+             	<th>Quantity</th>
         </tr>
         {% for tx in process.inputs %}
-            <tr>
-                <td>{{ tx.inventory_item.lot_id }}</td>
-                <td style="text-align: right; ">{{ tx.amount }}</td>
+            	<tr>
+			<td>{{ tx.inventory_item.lot_id }}</td>
+			<td>{{ tx.inventory_item.field_id }}</td>
+			<td style="text-align: right; ">{{ tx.amount }}</td>
+		</tr>
         {% endfor %}
     </table>
 
@@ -61,14 +64,16 @@
 	<h3>Output Lot{{process.outputs.count|pluralize}}:</h3>
     <table class="ga-event-table" >
         <tr>
-             <th>Lot id</th>
-             <th>Custodian</th>
-             <th>Quantity</th>
+		<th>Lot id</th>
+		<th>Field</th>
+        	<th>Custodian</th>
+        	<th>Quantity</th>
         </tr>
         {% for tx in process.outputs %}
             <tr>
-                <td>{{ tx.inventory_item.lot_id }}</td>
-                <td>{{ tx.inventory_item.custodian }}</td>
+		<td>{{ tx.inventory_item.lot_id }}</td>
+		<td>{{ tx.inventory_item.field_id }}</td>
+		<td>{{ tx.inventory_item.custodian }}</td>
                 <td style="text-align: right; ">{{ tx.amount }}</td>
         {% endfor %}
     </table>

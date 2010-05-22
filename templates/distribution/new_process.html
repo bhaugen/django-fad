@@ -239,11 +239,15 @@
 					<th>Producer</th>
 					<th>Product</th>
 					<th>Quantity</th>
+					<th>Lot Id</th>
+					<th>Field</th>
 				</tr>
 				<tr>
 					<td>{{ input_create_form.producer }}</td>
 					<td>{{ input_create_form.product }}</td>
 					<td>{{ input_create_form.planned }}</td>
+					<td>{{ input_create_form.freeform_lot_id }}</td>
+					<td>{{ input_create_form.field_id }}</td>
 				</tr>
 			{% endif %}
 		</table>
@@ -274,6 +278,8 @@
 				<th>Producer</th>
 				<th>Product</th>
 				<th>Quantity</th>
+				<th>Lot Id</th>
+				<th>Field</th>
 				<th>Custodian</th>
 			</tr>
 
@@ -284,6 +290,8 @@
 						<td>{{ output_create_form.producer }}</td>
 						<td>{{ output_create_form.product }}</td>
 						<td>{{ output_create_form.planned }}</td>
+						<td>{{ output_create_form.freeform_lot_id }}</td>
+						<td>{{ output_create_form.field_id }}</td>
 						<td>{{ output_create_form.custodian }}</td>
 					</tr>
 				{% endfor %}

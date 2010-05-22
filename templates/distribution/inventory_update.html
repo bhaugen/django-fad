@@ -113,7 +113,8 @@
         </table>
 
         <table class="ga-event-table" >
-                <th>Product</th>
+		<th>Product</th>
+		<th>Lot Id</th>
                 <th>Field</th>
 		<th>Custodian</th>
 		<th>Date</th>
@@ -124,6 +125,7 @@
             {% for item_form in item_forms %}
                  <tr>
 			 <td class="read-only-td" > {{ item_form.description }} </td>
+			 <td> {{ item_form.freeform_lot_id }} </td>
 			 <td> {{ item_form.field_id }} </td>
 			<td> {{ item_form.custodian }} </td>
 			<td> {{ item_form.inventory_date }} </td>
@@ -131,7 +133,7 @@
 			<td> {{ item_form.received }} </td>
 			<td> {{ item_form.notes }} </td>
 			{{ item_form.item_id }}
-			{{ item_form.prodname }}
+			{{ item_form.prod_id }}
                 </tr>
            {% endfor %} 
         </table>

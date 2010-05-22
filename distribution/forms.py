@@ -342,11 +342,18 @@ def create_plan_forms(member, data=None):
     return form_list 
 
 class InventoryItemForm(forms.ModelForm):
-    prodname = forms.CharField(widget=forms.HiddenInput)
-    field_id = forms.CharField(required=False, widget=forms.TextInput(attrs={'size': '8', 'value': ''}))
+    prod_id = forms.CharField(widget=forms.HiddenInput)
+    freeform_lot_id = forms.CharField(required=False,
+                                      widget=forms.TextInput(attrs={'size': '16', 'value': ''}))
+    field_id = forms.CharField(required=False,
+                               widget=forms.TextInput(attrs={'size': '5', 'value': ''}))
     inventory_date = forms.DateField(widget=forms.TextInput(attrs={'size': '10'}))
-    planned = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
-    received = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
+    planned = forms.DecimalField(widget=forms.TextInput(attrs={'class':
+                                                               'quantity-field',
+                                                               'size': '6'}))
+    received = forms.DecimalField(widget=forms.TextInput(attrs={'class':
+                                                                'quantity-field',
+                                                                'size': '6'}))
     notes = forms.CharField(required=False, widget=forms.TextInput(attrs={'size': '32', 'value': ''}))
     item_id = forms.CharField(required=False, widget=forms.HiddenInput)
 
@@ -384,10 +391,12 @@ def create_inventory_item_forms(producer, avail_date, data=None):
                 custodian_id = item.custodian.id
         except KeyError:
             item = False
+        #import pdb; pdb.set_trace()
         if item:
-            the_form = InventoryItemForm(data, prefix=plan.product.short_name, initial={
+            the_form = InventoryItemForm(data, prefix=item.product.id, initial={
                 'item_id': item.id,
-                'prodname': plan.product.short_name, 
+                'prod_id': item.product.id,
+                'freeform_lot_id': item.freeform_lot_id,
                 'field_id': item.field_id,
                 'custodian': custodian_id,
                 'inventory_date': item.inventory_date,
@@ -395,9 +404,8 @@ def create_inventory_item_forms(producer, avail_date, data=None):
                 'received': item.received,
                 'notes': item.notes})
         else:
-            the_form = InventoryItemForm(data, prefix=plan.product.short_name, initial={
-                'prodname': plan.product.short_name, 
-                #'description': plan.product.long_name,
+            the_form = InventoryItemForm(data, prefix=plan.product.id, initial={
+                'prod_id': plan.product.id, 
                 'inventory_date': avail_date,
                 'planned': 0,
                 'received': 0,
@@ -740,6 +748,10 @@ class InputLotSelectionForm(forms.Form):
 
 class InputLotCreationForm(forms.ModelForm):
     planned = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
+    freeform_lot_id = forms.CharField(required=False,
+                                      widget=forms.TextInput(attrs={'size': '16', 'value': ''}))
+    field_id = forms.CharField(required=False,
+                               widget=forms.TextInput(attrs={'size': '5', 'value': ''}))
 
     def __init__(self, input_types, *args, **kwargs):
         super(InputLotCreationForm, self).__init__(*args, **kwargs)
@@ -759,6 +771,10 @@ class InputLotUpdateForm(forms.Form):
 
 class OutputLotCreationForm(forms.ModelForm):
     planned = forms.DecimalField(widget=forms.TextInput(attrs={'class': 'quantity-field', 'size': '10'}))
+    freeform_lot_id = forms.CharField(required=False,
+                                      widget=forms.TextInput(attrs={'size': '16', 'value': ''}))
+    field_id = forms.CharField(required=False,
+                               widget=forms.TextInput(attrs={'size': '5', 'value': ''}))
 
     def __init__(self, output_types, *args, **kwargs):
         super(OutputLotCreationForm, self).__init__(*args, **kwargs)
@@ -775,6 +791,10 @@ class OutputLotCreationFormsetForm(forms.ModelForm):
     producer = forms.ModelChoiceField(
         queryset=QuerySet(model=Producer),
         widget=forms.Select(attrs={'class': 'output_producer',}))
+    freeform_lot_id = forms.CharField(required=False,
+                                      widget=forms.TextInput(attrs={'size': '16', 'value': ''}))
+    field_id = forms.CharField(required=False,
+                               widget=forms.TextInput(attrs={'size': '5', 'value': ''}))
 
     def __init__(self, *args, **kwargs):
         super(OutputLotCreationFormsetForm, self).__init__(*args, **kwargs)
