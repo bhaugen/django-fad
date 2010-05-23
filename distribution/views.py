@@ -622,6 +622,7 @@ def order_entry(request):
 
 @login_required
 def delivery_selection(request):
+    init = {"order_date": current_week(),}
     if request.method == "POST":
         dsform = DeliverySelectionForm(request.POST)  
         if dsform.is_valid():
@@ -633,7 +634,7 @@ def delivery_selection(request):
     else:
         #dsform = DeliverySelectionForm(initial={'order_date': order_date, })
     #return render_to_response('distribution/delivery_selection.html', {'order_date': order_date, 'header_form': dsform})
-        dsform = DeliverySelectionForm()
+        dsform = DeliverySelectionForm(initial=init)
     return render_to_response('distribution/delivery_selection.html', {'header_form': dsform})
 
 @login_required
