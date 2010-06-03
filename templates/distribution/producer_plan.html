@@ -10,6 +10,9 @@
 
 {% block content %}
 
+<div class="plan-update">
+
+
 	{% include "distribution/tabnav.html" %}
 
     <table style="margin-bottom: 1em; ">
@@ -35,5 +38,7 @@
                 <td style="text-align: right; ">{{ item.quantity }}</td>
             </tr>
         {% endfor %}
-    </table>
+	</table>
+
+</div>
 {% endblock %} 

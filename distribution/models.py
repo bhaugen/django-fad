@@ -582,6 +582,17 @@ class Product(models.Model):
             answer = ', '.join(parents)
         return answer
 
+    def supply_demand_product(self):
+        answer = self
+        prod = self
+        while not prod.parent is None:
+            if prod.parent.plannable:
+                answer = prod.parent
+                break
+            else:
+                prod = prod.parent
+        return answer
+
     def sellable_children(self):
         kids = flattened_children(self, Product.objects.all(), [])
         sellables = []
@@ -622,7 +633,7 @@ class SupplyDemandTable(object):
          self.rows = rows
 
 def supply_demand_table(from_date, to_date):
-    plans = ProductPlan.objects.filter(product__sellable=True)
+    plans = ProductPlan.objects.filter(product__plannable=True)
     rows = {}    
     for plan in plans:
         wkdate = from_date
@@ -630,16 +641,17 @@ def supply_demand_table(from_date, to_date):
         while wkdate <= to_date:
             row.append(Decimal("0"))
             wkdate = wkdate + datetime.timedelta(days=7)
-        row.insert(0, plan.product)
-        rows.setdefault(plan.product, row)
+        product = plan.product.supply_demand_product()
+        row.insert(0, product)
+        rows.setdefault(product, row)
         wkdate = from_date
         week = 0
         while wkdate <= to_date:
             if plan.from_date <= wkdate and plan.to_date >= wkdate:
                 if plan.role == "producer":
-                    rows[plan.product][week + 1] += plan.quantity
+                    rows[product][week + 1] += plan.quantity
                 else:
-                    rows[plan.product][week + 1] -= plan.quantity
+                    rows[product][week + 1] -= plan.quantity
             wkdate = wkdate + datetime.timedelta(days=7)
             week += 1
     label = "Product/Weeks"
@@ -654,7 +666,7 @@ def supply_demand_table(from_date, to_date):
 
 def supply_demand_week(week_date):
     plans = ProductPlan.objects.filter(
-        product__sellable=True,
+        product__plannable=True,
         from_date__lte=week_date,
         to_date__gte=week_date,
     )

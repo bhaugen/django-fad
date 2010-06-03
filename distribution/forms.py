@@ -283,7 +283,7 @@ class PlanSelectionForm(forms.Form):
 
         
 class PlanForm(forms.ModelForm):
-    parents = forms.CharField(required=False, widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '12'}))
+    #parents = forms.CharField(required=False, widget=forms.TextInput(attrs={'readonly':'true', 'class': 'read-only-input', 'size': '12'}))
     prodname = forms.CharField(widget=forms.HiddenInput)
     from_date = forms.DateField(widget=forms.TextInput(attrs={'size': '10'}))
     to_date = forms.DateField(widget=forms.TextInput(attrs={'size': '10'}))
@@ -307,10 +307,11 @@ def create_plan_forms(member, data=None):
     item_dict = {}
     for item in items:
         item_dict[item.product.id] = item
-    if member.is_customer():
-        prods = list(Product.objects.filter(sellable=True))
-    else:
-        prods = list(Product.objects.filter(plannable=True))
+    #if member.is_customer():
+    #    prods = list(Product.objects.filter(sellable=True))
+    #else:
+    #    prods = list(Product.objects.filter(plannable=True))
+    prods = list(Product.objects.filter(plannable=True))
     for prod in prods:
         prod.parents = prod.parent_string()
     prods.sort(lambda x, y: cmp(x.parents, y.parents))
@@ -323,7 +324,7 @@ def create_plan_forms(member, data=None):
         if item:
             this_form = PlanForm(member=member, data=data, prefix=prod.short_name, initial={
                 'item_id': item.id,
-                'parents': prod.parents, 
+                #'parents': prod.parents, 
                 'prodname': prod.short_name,
                 'from_date': item.from_date,
                 'to_date': item.to_date,
@@ -332,12 +333,13 @@ def create_plan_forms(member, data=None):
                 'inventoried': item.inventoried})
         else:
             this_form = PlanForm(member=member, data=data, prefix=prod.short_name, initial={
-                'parents': prod.parents, 
+                #'parents': prod.parents, 
                 'prodname': prod.short_name, 
                 'from_date': datetime.date.today(),
                 'to_date': datetime.date.today()  + datetime.timedelta(days=365),
                 'quantity': 0})
         this_form.long_name = prod.long_name
+        this_form.parents = prod.parents
         form_list.append(this_form)
     return form_list 
 
