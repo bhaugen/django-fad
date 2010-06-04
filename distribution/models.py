@@ -485,7 +485,7 @@ class Product(models.Model):
         help_text='Enter override as a decimal fraction, not a percentage - for example, .05 instead of 5%. Note: you cannot override to zero here, only on Order Items.')
     pay_producer = models.BooleanField(default=True,
         help_text='If checked, the Food Network pays the producer for issues, deliveries and damages of this product.')
-    pay_producer_on_terms = models.BooleanField(default=True,
+    pay_producer_on_terms = models.BooleanField(default=False,
         help_text='If checked, producer paid on member terms. If not, producers paid based on customer order payments. Note: Issues always paid on member terms.')
     expiration_days = models.IntegerField(default=6,
         help_text='Inventory Items (Lots) of this product will expire in this many days.')
@@ -661,7 +661,9 @@ def supply_demand_table(from_date, to_date):
         #columns.append(wkdate.strftime('%m-%d'))
         columns.append(wkdate)
         wkdate = wkdate + datetime.timedelta(days=7)
-    sdtable = SupplyDemandTable(columns, rows.values())
+    rows = rows.values()
+    rows.sort(lambda x, y: cmp(x[0].long_name, y[0].short_name))
+    sdtable = SupplyDemandTable(columns, rows)
     return sdtable
 
 def supply_demand_week(week_date):

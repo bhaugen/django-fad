@@ -305,6 +305,7 @@ class PlanForm(forms.ModelForm):
 def create_plan_forms(member, data=None):
     items = ProductPlan.objects.filter(member=member)
     item_dict = {}
+    # todo: must allow for multiple ProductPlans per product
     for item in items:
         item_dict[item.product.id] = item
     #if member.is_customer():
