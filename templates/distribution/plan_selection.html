@@ -80,7 +80,30 @@
 		            <tr>
                 		<th style="text-align: right; " >Phone:</th>
 		                <td id="phone" >---</td>
+			</tr>
+			<tr>
+                		<th style="text-align: right; " >From Date:</th>
+                		<td>
+					{{ header_form.plan_from_date }}
+				</td>
+				{% if header_form.plan_from_date.errors %}
+					<td style="color: red; " >
+						{{header_form.plan_from_date.errors }}
+					</td>
+				{% endif %}
+				</tr>
+				<tr>
+                		<th style="text-align: right; " >To Date:</th>
+                		<td>
+					{{ header_form.plan_to_date }}
+				</td>
+				{% if header_form.plan_to_date.errors %}
+					<td style="color: red; " >
+						{{header_form.plan_to_date.errors }}
+					</td>
+				{% endif %}
 		            </tr>
+
 		        </table>
         		<p>
 	        	    <input name="submit-update" type="submit" value="Submit" />

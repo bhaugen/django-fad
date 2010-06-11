@@ -633,6 +633,7 @@ class SupplyDemandTable(object):
          self.rows = rows
 
 def supply_demand_table(from_date, to_date):
+    # does plannable make sense here? how did it get planned in the first place?
     plans = ProductPlan.objects.filter(product__plannable=True)
     rows = {}    
     for plan in plans:
@@ -666,7 +667,8 @@ def supply_demand_table(from_date, to_date):
     sdtable = SupplyDemandTable(columns, rows)
     return sdtable
 
-def supply_demand_week(week_date):
+def supply_demand_weekly_table(week_date):
+    # does plannable make sense here? how did it get planned in the first place?
     plans = ProductPlan.objects.filter(
         product__plannable=True,
         from_date__lte=week_date,
@@ -698,6 +700,50 @@ def supply_demand_week(week_date):
     sdtable = SupplyDemandTable(columns, rows)
     return sdtable
 
+class PlannedWeek(object):
+    def __init__(self, product, from_date, to_date, quantity):
+         self.product = product
+         self.from_date = from_date
+         self.to_date = to_date
+         self.quantity = quantity
+         self.plan = None
+
+def plan_weeks(member, from_date, to_date):
+    plans = ProductPlan.objects.filter(member=member)
+    producer_products = ProducerProduct.objects.filter(producer=member, planned=True)
+    rows = {}    
+    for pp in producer_products:
+        product = pp.product
+        wkdate = from_date
+        row = [product]
+        while wkdate <= to_date:
+            enddate = wkdate + datetime.timedelta(days=6)
+            row.append(PlannedWeek(product, wkdate, enddate, Decimal("0")))
+            wkdate = enddate + datetime.timedelta(days=1)
+        #row.insert(0, product)
+        rows.setdefault(product, row)
+    for plan in plans:
+        product = plan.product
+        wkdate = from_date
+        week = 0
+        while wkdate <= to_date:
+            enddate = wkdate + datetime.timedelta(days=6)
+            if plan.from_date <= wkdate and plan.to_date >= wkdate:
+                rows[product][week + 1].quantity = plan.quantity
+                rows[product][week + 1].plan = plan
+            wkdate = wkdate + datetime.timedelta(days=7)
+            week += 1
+    label = "Product/Weeks"
+    columns = [label]
+    wkdate = from_date
+    while wkdate <= to_date:
+        columns.append(wkdate)
+        wkdate = wkdate + datetime.timedelta(days=7)
+    rows = rows.values()
+    rows.sort(lambda x, y: cmp(x[0].short_name, y[0].short_name))
+    sdtable = SupplyDemandTable(columns, rows)
+    return sdtable
+
 
 class ProductPlan(models.Model):
     member = models.ForeignKey(Party, related_name="product_plans") 
@@ -717,11 +763,52 @@ class ProductPlan(models.Model):
             self.member.short_name,
             self.product.short_name,
             self.from_date.strftime('%Y-%m-%d'),
-            self.from_date.strftime('%Y-%m-%d'),
+            self.to_date.strftime('%Y-%m-%d'),
             str(self.quantity)])
         
     class Meta:
         ordering = ('product', 'member', 'from_date')
+
+
+class ProducerProduct(models.Model):
+    producer = models.ForeignKey(Party, related_name="producer_products") 
+    product = models.ForeignKey(Product)
+    default_quantity = models.DecimalField(max_digits=8, decimal_places=2,
+        default=Decimal('0'), verbose_name='Qty per week')
+    inventoried = models.BooleanField(default=True,
+        help_text="If not inventoried, the default or planned qty per week will be used for ordering")
+    planned = models.BooleanField(default=True,
+        help_text='Should this product appear in Plan forms?')
+    distributor = models.ForeignKey(Party, related_name="producer_distributors", blank=True, null=True)
+    
+    def __unicode__(self):
+        return " ".join([
+            self.producer.short_name,
+            self.product.short_name])
+        
+    class Meta:
+        ordering = ('producer', 'product')
+
+
+class CustomerProduct(models.Model):
+    customer = models.ForeignKey(Party, related_name="customer_products") 
+    product = models.ForeignKey(Product)
+    list = models.CharField(max_length=64, blank=True,
+        help_text='You may separate products into different lists.')
+    default_quantity = models.DecimalField(max_digits=8, decimal_places=2,
+        default=Decimal('0'), verbose_name='Default quantity per week or order')
+    planned = models.BooleanField(default=True,
+        help_text='Should this product appear in Plan forms?')
+
+    
+    def __unicode__(self):
+        return " ".join([
+            self.customer.short_name,
+            self.product.short_name,])
+        
+    class Meta:
+        ordering = ('customer', 'product')
+
         
 
 class InventoryItem(models.Model):

@@ -276,6 +276,11 @@ class DateRangeSelectionForm(forms.Form):
 
 class PlanSelectionForm(forms.Form):
     member = forms.ChoiceField()
+    plan_from_date = forms.DateField(
+        widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
+    plan_to_date = forms.DateField(
+        widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
+
     def __init__(self, *args, **kwargs):
         super(PlanSelectionForm, self).__init__(*args, **kwargs)
         self.fields['member'].choices = [('', '----------')] + [
@@ -301,6 +306,20 @@ class PlanForm(forms.ModelForm):
         sublist.append(member)
         #sublist.sort(lambda x, y: cmp(y.__class__, x.__class__))
         self.fields['distributor'].choices = [(party.id, party.short_name) for party in sublist]
+
+
+class PlanRowForm(forms.Form):
+    product_id = forms.CharField(widget=forms.HiddenInput)
+
+
+class PlanCellForm(forms.Form):
+    plan_id = forms.CharField(required=False, widget=forms.HiddenInput)
+    product_id = forms.CharField(widget=forms.HiddenInput)
+    from_date = forms.DateField(widget=forms.HiddenInput)
+    to_date = forms.DateField(widget=forms.HiddenInput)
+    quantity = forms.DecimalField(required=False, widget=forms.TextInput(attrs={
+        'class': 'quantity-field', 'style':'width:45px'}))
+
         
 def create_plan_forms(member, data=None):
     items = ProductPlan.objects.filter(member=member)
@@ -565,15 +584,15 @@ class DeliveryForm(forms.ModelForm):
         exclude = ('from_whom', 'to_whom', 'process', 'unit_price', 'order_item', 'transaction_type', 'transaction_date', 'notes')
 
 def create_delivery_forms(thisdate, customer, data=None):
+    # could this below all be done with inline formsets?
+    # (which were not available when this was coded...)
+    # might be doable...
     form_list = []
     if customer:
         orderitems = OrderItem.objects.filter(order__order_date=thisdate, order__customer=customer)
     else:
         orderitems = OrderItem.objects.filter(order__order_date=thisdate)
     for oi in orderitems:
-        #dtf = DeliveryItemForm(data, prefix=str(oi.id), initial=
-        #    {'description': oi.order.customer.short_name + ': ' + oi.product.long_name,
-        #    'order_qty': oi.quantity, 'order_item_id': oi.id, 'product_id': oi.product.id})
         dtf = DeliveryItemForm(data, prefix=str(oi.id), initial=
             {'order_qty': oi.quantity, 'order_item_id': oi.id, 'product_id': oi.product.id})
         dtf.description = ": ".join([oi.order.customer.short_name, oi.product.long_name])
@@ -595,7 +614,6 @@ def create_delivery_forms(thisdate, customer, data=None):
             dtf.delivery_forms = []
             d = 0
             for delivery in deliveries:
-                #df = DeliveryForm(data, prefix=str(oi.id) + 'i' + str(delivery.id), instance=delivery)
                 df = DeliveryForm(data, prefix=str(oi.id) + str(d), instance=delivery)
                 selected = [(delivery.inventory_item.id, delivery.inventory_item.delivery_label()),]
                 df.fields['inventory_item'].choices = selected

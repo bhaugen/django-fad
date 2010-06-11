@@ -54,6 +54,22 @@ class ProductPlanAdmin(admin.ModelAdmin):
 admin.site.register(ProductPlan, ProductPlanAdmin)
 
 
+class ProducerProductAdmin(admin.ModelAdmin):
+    list_display = ('producer', 'product', 'default_quantity',
+                    'inventoried', 'planned', 'distributor')
+    list_filter = ['producer', 'product']
+    
+admin.site.register(ProducerProduct, ProducerProductAdmin)
+
+
+class CustomerProductAdmin(admin.ModelAdmin):
+    list_display = ('customer', 'product', 'default_quantity',
+                     'planned')
+    list_filter = ['customer', 'product']
+    
+admin.site.register(CustomerProduct, CustomerProductAdmin)
+
+
 class InventoryItemAdmin(admin.ModelAdmin):
     list_display = ('product', 'producer', 'lot_id', 'field_id', 'custodian', 'inventory_date', 'expiration_date', 'planned', 'remaining', 'received', 'onhand', 'notes')
     list_filter = ['producer', 'product']

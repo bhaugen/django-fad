@@ -10,15 +10,13 @@ import datetime
 import time
 from models import *
 from forms import *
+from view_helpers import *
 import csv
 from django.http import HttpResponse
 from django.core import serializers
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import MultipleObjectsReturned
 from django.core.mail import send_mail
-from django.forms.formsets import formset_factory
-
-from decimal import *
 
 try:
     from notification import models as notification
@@ -148,19 +146,166 @@ def plan_selection(request):
         if psform.is_valid():
             psdata = psform.cleaned_data
             member_id = psdata['member']
-            return HttpResponseRedirect('/%s/%s/'
-               % ('planupdate', member_id))
+            from_date = psdata['plan_from_date'].strftime('%Y_%m_%d')
+            to_date = psdata['plan_to_date'].strftime('%Y_%m_%d')
+            return HttpResponseRedirect('/%s/%s/%s/%s/'
+               % ('planningtable', member_id, from_date, to_date))
+            #return HttpResponseRedirect('/%s/%s/'
+            #   % ('planupdate', member_id))
     else:
-        psform = PlanSelectionForm()
-        thisdate = datetime.date.today()
-        init = {
-            'from_date': thisdate,
-            'to_date': thisdate + datetime.timedelta(weeks=16),
+        from_date = datetime.date.today()
+        # force from_date to Monday, to_date to Sunday
+        from_date = from_date - datetime.timedelta(days=datetime.date.weekday(from_date))
+        to_date = from_date + datetime.timedelta(weeks=16)
+        to_date = to_date - datetime.timedelta(days=datetime.date.weekday(to_date)+1)
+        to_date = to_date + datetime.timedelta(days=7)
+        plan_init = {
+            'plan_from_date': from_date,
+            'plan_to_date': to_date,
         }
+        init = {
+            'from_date': from_date,
+            'to_date': to_date,
+        }
+        psform = PlanSelectionForm(initial=plan_init)
         sdform = DateRangeSelectionForm(initial=init)
     return render_to_response('distribution/plan_selection.html', 
             {'header_form': psform,
              'sdform': sdform,}, context_instance=RequestContext(request))
+
+@login_required
+def planning_table(request, member_id, from_date, to_date):
+    try:
+        member = Party.objects.get(pk=member_id)
+    except Party.DoesNotExist:
+        raise Http404
+    role = "producer"
+    plan_type = "Production"
+    if member.is_customer():
+        role = "consumer"
+        plan_type = "Production"
+
+    try:
+        from_date = datetime.datetime(*time.strptime(from_date, '%Y_%m_%d')[0:5]).date()
+        to_date = datetime.datetime(*time.strptime(to_date, '%Y_%m_%d')[0:5]).date()
+    except ValueError:
+            raise Http404
+    # force from_date to Monday, to_date to Sunday
+    from_date = from_date - datetime.timedelta(days=datetime.date.weekday(from_date))
+    to_date = to_date - datetime.timedelta(days=datetime.date.weekday(to_date)+1)
+    to_date = to_date + datetime.timedelta(days=7)
+    plan_table = plan_weeks(member, from_date, to_date)
+    forms = create_weekly_plan_forms(plan_table.rows, data=request.POST or None)
+    if request.method == "POST":
+        #import pdb; pdb.set_trace()
+        for row in forms:
+            if row.formset.is_valid():
+                for form in row.formset.forms:
+                    data = form.cleaned_data
+                    qty = data['quantity']
+                    plan_id = data['plan_id']
+                    from_dt = data['from_date']
+                    to_dt = data['to_date']
+                    product_id = data['product_id']
+                    plan = None
+                    if plan_id:
+                        # what if plan was changed by prev cell?
+                        plan = ProductPlan.objects.get(id=plan_id)
+                        if plan.to_date < from_dt or plan.from_date > to_dt:
+                            plan = None
+                    if qty:
+                        if plan:
+                            #import pdb; pdb.set_trace()
+                            if not qty == plan.quantity:
+                                #import pdb; pdb.set_trace()
+                                if plan.from_date >= from_dt and plan.to_date <= to_dt:
+                                    plan.quantity = qty
+                                    plan.save()
+                                else:
+                                    if plan.from_date < from_dt:
+                                        new_to_dt = from_dt - datetime.timedelta(days=1)
+                                        earlier_plan = ProductPlan(
+                                            member=plan.member,
+                                            product=plan.product,
+                                            quantity=plan.quantity,
+                                            from_date=plan.from_date,
+                                            to_date=new_to_dt,
+                                            role=plan.role,
+                                            inventoried=plan.inventoried,
+                                            distributor=plan.distributor,
+                                        )
+                                        earlier_plan.save()
+                                    if plan.to_date > to_dt:
+                                        new_plan = ProductPlan(
+                                            member=plan.member,
+                                            product=plan.product,
+                                            quantity=qty,
+                                            from_date=from_dt,
+                                            to_date=to_dt,
+                                            role=plan.role,
+                                            inventoried=plan.inventoried,
+                                            distributor=plan.distributor,
+                                        )
+                                        new_plan.save()
+                                        plan.from_date = to_dt + datetime.timedelta(days=1)
+                                        plan.save()
+                                    else:
+                                        plan.from_date=from_dt
+                                        plan.quantity=qty
+                                        plan.save()      
+                        else:
+                            product = Product.objects.get(id=product_id)
+                            new_plan = ProductPlan(
+                                member=member,
+                                product=product,
+                                quantity=qty,
+                                from_date=from_dt,
+                                to_date=to_dt,
+                                role=role,
+                                #inventoried=True,
+                                #distributor,
+                            )
+                            new_plan.save()
+                    else:
+                        if plan:
+                            if plan.from_date >= from_dt and plan.to_date <= to_dt:
+                                #pass
+                                plan.delete()
+                            else:
+                                #import pdb; pdb.set_trace()
+                                if plan.to_date > to_dt:
+                                    early_from_dt = plan.from_date              
+                                    if plan.from_date < from_dt:
+                                        early_to_dt = from_dt - datetime.timedelta(days=1)
+                                        earlier_plan = ProductPlan(
+                                            member=plan.member,
+                                            product=plan.product,
+                                            quantity=plan.quantity,
+                                            from_date=early_from_dt,
+                                            to_date=early_to_dt,
+                                            role=plan.role,
+                                            inventoried=plan.inventoried,
+                                            distributor=plan.distributor,
+                                         )
+                                        earlier_plan.save()
+                                    plan.from_date = to_dt + datetime.timedelta(days=1)
+                                    plan.save()
+                                else:
+                                    plan.to_date= from_dt - datetime.timedelta(days=1)
+                                    plan.save()
+        from_date = from_date.strftime('%Y_%m_%d')
+        to_date = to_date.strftime('%Y_%m_%d')
+        return HttpResponseRedirect('/%s/%s/%s/'
+                    % ('supplydemand', from_date, to_date))
+    return render_to_response('distribution/planning_table.html', 
+        {
+            'from_date': from_date,
+            'to_date': to_date,
+            'plan_table': plan_table,
+            'forms': forms,
+            'plan_type': plan_type,
+        })
+
 
 @login_required
 def plan_update(request, prod_id):
@@ -972,7 +1117,7 @@ def supply_and_demand_week(request, week_date):
         week_date = datetime.datetime(*time.strptime(week_date, '%Y_%m_%d')[0:5]).date()
     except ValueError:
             raise Http404
-    sdtable = supply_demand_week(week_date)
+    sdtable = supply_demand_weekly_table(week_date)
     return render_to_response('distribution/supply_demand_week.html', 
         {
             'week_date': week_date,
