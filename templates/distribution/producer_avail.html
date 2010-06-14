@@ -10,6 +10,8 @@
 
 {% block content %}
 
+<div class="inventory-update">
+
 	{% include "distribution/tabnav.html" %}
 
     <table style="margin-bottom: 1em; ">
@@ -53,5 +55,8 @@
                 <td>{{ item.notes }}</td>
             </tr>
         {% endfor %}
-    </table>
+</table>
+
+</div>
+
 {% endblock %} 

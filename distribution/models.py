@@ -711,10 +711,15 @@ class PlannedWeek(object):
 
 def plan_weeks(member, from_date, to_date):
     plans = ProductPlan.objects.filter(member=member)
-    producer_products = ProducerProduct.objects.filter(producer=member, planned=True)
+    products = ProducerProduct.objects.filter(producer=member, planned=True)
+    if not products:
+        products = Product.objects.filter(plannable=True)
     rows = {}    
-    for pp in producer_products:
-        product = pp.product
+    for pp in products:
+        try:
+            product = pp.product
+        except:
+            product = pp
         wkdate = from_date
         row = [product]
         while wkdate <= to_date:
@@ -1290,6 +1295,10 @@ class Process(models.Model):
     process_type = models.ForeignKey(ProcessType)
     process_date = models.DateField()
     notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ('process_date',)
+        verbose_name_plural = "Processes"
 
     def __unicode__(self):
         return " ".join([

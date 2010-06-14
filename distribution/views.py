@@ -183,7 +183,7 @@ def planning_table(request, member_id, from_date, to_date):
     plan_type = "Production"
     if member.is_customer():
         role = "consumer"
-        plan_type = "Production"
+        plan_type = "Consumption"
 
     try:
         from_date = datetime.datetime(*time.strptime(from_date, '%Y_%m_%d')[0:5]).date()

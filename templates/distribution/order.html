@@ -15,7 +15,10 @@
 	<p class="do-not-print" >
 		<a href="/orderselection">Update another order</a> <a href="/">Home</a>
 	</p>
--->
+	-->
+
+<div class="order-update">
+
 	{% include "distribution/tabnav.html" %}
 
     <table style="margin-bottom: 1em;" >
@@ -78,5 +81,7 @@
 			<td style="text-align: right;" >${{ order.total_price }}</td>
 		</tr>
     </table>
+    
+</div>    
 {% endblock %} 
 
