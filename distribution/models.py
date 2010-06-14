@@ -560,7 +560,7 @@ class Product(models.Model):
     
     def total_delivered(self, thisdate):
         deliveries = self.deliveries_this_week(thisdate)
-        return sum(delivery.quantity for delivery in deliveries)
+        return sum(delivery.amount for delivery in deliveries)
     
     def decide_fee(self):
         prod_fee = self.customer_fee_override
@@ -632,9 +632,10 @@ class SupplyDemandTable(object):
          self.columns = columns
          self.rows = rows
 
-def supply_demand_table(from_date, to_date):
-    # does plannable make sense here? how did it get planned in the first place?
-    plans = ProductPlan.objects.filter(product__plannable=True)
+def supply_demand_table(from_date, to_date, member=None):
+    plans = ProductPlan.objects.all()
+    if member:
+        plans = plans.filter(member=member)
     rows = {}    
     for plan in plans:
         wkdate = from_date
@@ -1137,7 +1138,7 @@ def shorts_for_date(order_date):
         if not oi.product in maybes:
             maybes[oi.product] = ShortOrderItems(oi.product, 
                 oi.product.total_avail(order_date), Decimal("0"), Decimal("0"), [])
-        maybes[oi.product].total_ordered += oi.quantity      
+        maybes[oi.product].total_ordered += (oi.quantity -oi.delivered_quantity())    
         maybes[oi.product].order_items.append(oi)
     for maybe in maybes:
         qty_short = maybes[maybe].total_ordered - maybes[maybe].total_avail
@@ -1235,6 +1236,9 @@ class OrderItem(models.Model):
             return item
         else:
             return None
+    
+    def delivered_quantity(self):
+        return sum(tx.amount for tx in self.inventorytransaction_set.all())
         
     def producer_fee(self):
         return producer_fee()

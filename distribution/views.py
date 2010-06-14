@@ -295,8 +295,8 @@ def planning_table(request, member_id, from_date, to_date):
                                     plan.save()
         from_date = from_date.strftime('%Y_%m_%d')
         to_date = to_date.strftime('%Y_%m_%d')
-        return HttpResponseRedirect('/%s/%s/%s/'
-                    % ('supplydemand', from_date, to_date))
+        return HttpResponseRedirect('/%s/%s/%s/%s/'
+                    % ('membersupplydemand', from_date, to_date, member_id))
     return render_to_response('distribution/planning_table.html', 
         {
             'from_date': from_date,
@@ -1111,6 +1111,29 @@ def supply_and_demand(request, from_date, to_date):
             'sdtable': sdtable,
         })
 
+def member_supply_and_demand(request, from_date, to_date, member_id):
+    try:
+        member = Party.objects.get(pk=member_id)
+    except Party.DoesNotExist:
+        raise Http404
+    try:
+        from_date = datetime.datetime(*time.strptime(from_date, '%Y_%m_%d')[0:5]).date()
+        to_date = datetime.datetime(*time.strptime(to_date, '%Y_%m_%d')[0:5]).date()
+    except ValueError:
+            raise Http404
+    sdtable = supply_demand_table(from_date, to_date, member)
+    plan_type = "Production"
+    if member.is_customer():
+        plan_type = "Production"
+    return render_to_response('distribution/member_plans.html', 
+        {
+            'from_date': from_date,
+            'to_date': to_date,
+            'sdtable': sdtable,
+            'member': member,
+            'plan_type': plan_type,
+        })
+
 
 def supply_and_demand_week(request, week_date):
     try:
@@ -1204,9 +1227,11 @@ def dashboard(request):
             for prod in prods:
                 totavail = prod.total_avail(thisdate)
                 totordered = prod.total_ordered(thisdate)
+
                 if totavail + totordered > 0:
-                    producers = prod.avail_producers(thisdate)
-                    product_dict[prod.short_name] = [prod.parent_string(), prod.long_name, producers, totavail, totordered]
+                    producers = prod.active_producers(thisdate)
+                    product_dict[prod.short_name] = [prod.parent_string(), 
+                        prod.long_name, producers, totavail, totordered, prod.total_delivered(thisdate)]
             item_list = product_dict.values()
             item_list.sort()
     return render_to_response('distribution/dashboard.html', 
