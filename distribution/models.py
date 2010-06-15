@@ -711,7 +711,10 @@ class PlannedWeek(object):
 
 def plan_weeks(member, from_date, to_date):
     plans = ProductPlan.objects.filter(member=member)
-    products = ProducerProduct.objects.filter(producer=member, planned=True)
+    if member.is_customer():
+        products = CustomerProduct.objects.filter(customer=member, planned=True)
+    else:
+        products = ProducerProduct.objects.filter(producer=member, planned=True)
     if not products:
         products = Product.objects.filter(plannable=True)
     rows = {}    
