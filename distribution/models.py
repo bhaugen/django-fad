@@ -1475,6 +1475,8 @@ class InventoryTransaction(EconomicEvent):
             self.inventory_item.update_from_transaction(-qty_delta)
         
     def delete(self):
+        #todo: admin deletes do not call this delete method
+        # need a signal or something...
         if self.transaction_type=="Receipt" or self.transaction_type=="Production":
             self.inventory_item.update_from_transaction(-self.amount)
         else:

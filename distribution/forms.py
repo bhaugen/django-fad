@@ -607,6 +607,7 @@ def create_delivery_forms(thisdate, customer, data=None):
         else:
             choices = [('', '----------')] + [(item.id, item.delivery_label()) for item in avail_items]
         deliveries = oi.inventorytransaction_set.filter(transaction_type='Delivery')
+        #import pdb; pdb.set_trace()
         delivery_count = len(deliveries)
         field_set_count = max(len(choices)-1, delivery_count)
         field_set_count = min(field_set_count, 4)
@@ -637,6 +638,8 @@ def create_delivery_forms(thisdate, customer, data=None):
                 [DeliveryForm(data, prefix=str(oi.id) + str(x), instance=InventoryTransaction()) for x in range(1, field_set_count)])
             for df in dtf.delivery_forms:
                 df.fields['inventory_item'].choices = choices
+            if not field_set_count:
+                field_set_count = 1
             field_count = field_set_count * 2
             dtf.empty_fields = ["---" for x in range(field_count, 8)]
             form_list.append(dtf)
