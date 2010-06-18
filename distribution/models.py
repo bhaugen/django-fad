@@ -674,13 +674,14 @@ def supply_demand_weekly_table(week_date):
         product__plannable=True,
         from_date__lte=week_date,
         to_date__gte=week_date,
-    )
+    ).order_by("-role", "member__short_name")
     columns = []
     rows = {}
     for plan in plans:
-        columns.append(plan.member)
-    columns = list(set(columns))
-    columns.sort(lambda x, y: cmp(x.short_name, y.short_name))
+        if not plan.member in columns:
+            columns.append(plan.member)
+    #columns = list(set(columns))
+    #columns.sort(lambda x, y: cmp(x.short_name, y.short_name))
     columns.insert(0, "Product/Member")
     columns.append("Balance")
     for plan in plans:
