@@ -65,11 +65,11 @@
 		            <tr>
                 		<th style="text-align: right; " >Member:</th>
                 		<td>
-					{{ header_form.member }}
+					{{ plan_form.member }}
 				</td>
-				{% if header_form.member.errors %}
+				{% if plan_form.member.errors %}
 					<td style="color: red; " >
-						{{ header_form.member.errors }}
+						{{ plan_form.member.errors }}
 					</td>
 				{% endif %}
 		            </tr>
@@ -84,36 +84,37 @@
 			<tr>
                 		<th style="text-align: right; " >From Date:</th>
                 		<td>
-					{{ header_form.plan_from_date }}
+					{{ plan_form.plan_from_date }}
 				</td>
-				{% if header_form.plan_from_date.errors %}
+				{% if plan_form.plan_from_date.errors %}
 					<td style="color: red; " >
-						{{header_form.plan_from_date.errors }}
+						{{plan_form.plan_from_date.errors }}
 					</td>
 				{% endif %}
 				</tr>
 				<tr>
                 		<th style="text-align: right; " >To Date:</th>
                 		<td>
-					{{ header_form.plan_to_date }}
+					{{ plan_form.plan_to_date }}
 				</td>
-				{% if header_form.plan_to_date.errors %}
+				{% if plan_form.plan_to_date.errors %}
 					<td style="color: red; " >
-						{{header_form.plan_to_date.errors }}
+						{{plan_form.plan_to_date.errors }}
 					</td>
 				{% endif %}
 		            </tr>
 
 		        </table>
         		<p>
-	        	    <input name="submit-update" type="submit" value="Submit" />
+	        	    <input name="submit-plan-update" type="submit" value="Submit" />
         		</p>
 	    </form>
 
     	</div>
 	{% endif %}
 
-	<div style="border: 2px solid grey; float: left; width: 30%; padding-left: 1em;">
+	<div style="float: left; width: 30%; ">
+	<div style="border: 2px solid grey; padding-left: 1em; ">
 		<h4>Supply and Demand Table</h4>
 
 		<form action="." method="POST" >
@@ -148,8 +149,45 @@
 		            <input name="submit-supply-demand" type="submit" value="Submit" />
         		</p>
 	    </form>
+    	</div>
 
+	
+    	<div style="border: 2px solid grey; padding-left: 1em; ">
+		<h4>Planned Income Table</h4>
 
+		<form action="." method="POST" >
+
+        		<table>
+		            <tr>
+                		<th style="text-align: right; " >From Date:</th>
+                		<td>
+					{{ income_form.from_date }}
+				</td>
+				{% if income_form.from_date.errors %}
+					<td style="color: red; " >
+						{{income_form.from_date.errors }}
+					</td>
+				{% endif %}
+				</tr>
+				<tr>
+                		<th style="text-align: right; " >To Date:</th>
+                		<td>
+					{{ income_form.to_date }}
+				</td>
+				{% if income_form.to_date.errors %}
+					<td style="color: red; " >
+						{{income_form.to_date.errors }}
+					</td>
+				{% endif %}
+		            </tr>
+
+		        </table>
+
+	        	<p>
+		            <input name="submit-income" type="submit" value="Submit" />
+        		</p>
+	    </form>
+	</div>
 
 	</div>
 

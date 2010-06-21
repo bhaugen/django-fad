@@ -48,7 +48,7 @@ admin.site.register(Product, ProductAdmin)
 class ProductPlanAdmin(admin.ModelAdmin):
     list_display = ('product', 'member', 'role', 'from_date', 'to_date', 'quantity',
                     'inventoried', 'distributor')
-    list_filter = ['inventoried', 'member', 'product']
+    list_filter = ['role', 'inventoried', 'member', 'product']
     date_hierarchy = 'from_date'
     
 admin.site.register(ProductPlan, ProductPlanAdmin)

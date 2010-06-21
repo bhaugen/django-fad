@@ -134,24 +134,35 @@ def json_producer_info(request, producer_id):
 def plan_selection(request):
     if request.method == "POST":
         if request.POST.get('submit-supply-demand'):
-            sdform = DateRangeSelectionForm(request.POST)  
+            sdform = DateRangeSelectionForm(prefix='sd', data=request.POST)  
             if sdform.is_valid():
                 data = sdform.cleaned_data
                 from_date = data['from_date'].strftime('%Y_%m_%d')
                 to_date = data['to_date'].strftime('%Y_%m_%d')
                 return HttpResponseRedirect('/%s/%s/%s/'
                     % ('supplydemand', from_date, to_date))
+
+        elif request.POST.get('submit-income'):
+            income_form = DateRangeSelectionForm(prefix='inc', data=request.POST)  
+            if income_form.is_valid():
+                data = income_form.cleaned_data
+                from_date = data['from_date'].strftime('%Y_%m_%d')
+                to_date = data['to_date'].strftime('%Y_%m_%d')
+                return HttpResponseRedirect('/%s/%s/%s/'
+                    % ('income', from_date, to_date))
         
-        psform = PlanSelectionForm(request.POST)  
-        if psform.is_valid():
-            psdata = psform.cleaned_data
-            member_id = psdata['member']
-            from_date = psdata['plan_from_date'].strftime('%Y_%m_%d')
-            to_date = psdata['plan_to_date'].strftime('%Y_%m_%d')
-            return HttpResponseRedirect('/%s/%s/%s/%s/'
-               % ('planningtable', member_id, from_date, to_date))
-            #return HttpResponseRedirect('/%s/%s/'
-            #   % ('planupdate', member_id))
+        else:
+            psform = PlanSelectionForm(request.POST)  
+            if psform.is_valid():
+                psdata = psform.cleaned_data
+                member_id = psdata['member']
+                from_date = psdata['plan_from_date'].strftime('%Y_%m_%d')
+                to_date = psdata['plan_to_date'].strftime('%Y_%m_%d')
+                return HttpResponseRedirect('/%s/%s/%s/%s/'
+                   % ('planningtable', member_id, from_date, to_date))
+
+                #return HttpResponseRedirect('/%s/%s/'
+                #   % ('planupdate', member_id))
     else:
         from_date = datetime.date.today()
         # force from_date to Monday, to_date to Sunday
@@ -168,10 +179,13 @@ def plan_selection(request):
             'to_date': to_date,
         }
         psform = PlanSelectionForm(initial=plan_init)
-        sdform = DateRangeSelectionForm(initial=init)
+        sdform = DateRangeSelectionForm(prefix='sd', initial=init)
+        income_form = DateRangeSelectionForm(prefix = 'inc', initial=init)
     return render_to_response('distribution/plan_selection.html', 
-            {'header_form': psform,
-             'sdform': sdform,}, context_instance=RequestContext(request))
+            {'plan_form': psform,
+             'sdform': sdform,
+             'income_form': income_form,
+            }, context_instance=RequestContext(request))
 
 @login_required
 def planning_table(request, member_id, from_date, to_date):
@@ -1110,6 +1124,21 @@ def supply_and_demand(request, from_date, to_date):
             'to_date': to_date,
             'sdtable': sdtable,
         })
+
+def income(request, from_date, to_date):
+    try:
+        from_date = datetime.datetime(*time.strptime(from_date, '%Y_%m_%d')[0:5]).date()
+        to_date = datetime.datetime(*time.strptime(to_date, '%Y_%m_%d')[0:5]).date()
+    except ValueError:
+            raise Http404
+    income_table = suppliable_demand(from_date, to_date)
+    return render_to_response('distribution/income.html', 
+        {
+            'from_date': from_date,
+            'to_date': to_date,
+            'income_table': income_table,
+        })
+
 
 def member_supply_and_demand(request, from_date, to_date, member_id):
     try:
