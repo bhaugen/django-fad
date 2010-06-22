@@ -195,14 +195,14 @@ class PlannedWeek(object):
          self.quantity = quantity
          self.plan = None
 
-def plan_weeks(member, from_date, to_date):
+def plan_weeks(member, products, from_date, to_date):
     plans = ProductPlan.objects.filter(member=member)
-    if member.is_customer():
-        products = CustomerProduct.objects.filter(customer=member, planned=True)
-    else:
-        products = ProducerProduct.objects.filter(producer=member, planned=True)
-    if not products:
-        products = Product.objects.filter(plannable=True)
+    #if member.is_customer():
+    #    products = CustomerProduct.objects.filter(customer=member, planned=True)
+    #else:
+    #    products = ProducerProduct.objects.filter(producer=member, planned=True)
+    #if not products:
+    #    products = Product.objects.filter(plannable=True)
     rows = {}    
     for pp in products:
         try:

@@ -115,7 +115,14 @@ table thead
 
 	{% include "distribution/tabnav.html" %}
 
-	<h2>{{ plan_type }} Plan from {{ from_date }} to {{ to_date }}</h2>
+	<h2 style="margin-bottom: 0; ">{{ plan_type }} Plan from {{ from_date }} to {{ to_date }}</h2>
+	<p style="margin-top: 0; font-style: italic; " >
+	{% ifequal list_type "A" %}
+		Using All Products.  Planned products go onto the {{ member }} Product List.
+	{% else %}
+		Using {{ member }} Product List
+	{% endifequal %}
+	</p>
 
 	<form action="." method="POST" >
 	<input type="submit" value="Submit" />

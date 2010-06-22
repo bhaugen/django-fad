@@ -46,7 +46,11 @@
 			dojo.connect(dojo.byId("id_member"), "onchange", "producerChanged");
 		});
 
-    </script>
+	</script>
+
+	<style>
+		ul {list-style-type:none;}
+	</style>
 
 {% endblock %}
 
@@ -102,7 +106,12 @@
 						{{plan_form.plan_to_date.errors }}
 					</td>
 				{% endif %}
-		            </tr>
+			</tr>
+			<tr>
+				<th style="text-align: right; " >Product List:</th>
+				<td>{{ plan_form.list_type }}</td>
+			</tr>
+
 
 		        </table>
         		<p>

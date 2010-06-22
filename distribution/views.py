@@ -158,8 +158,9 @@ def plan_selection(request):
                 member_id = psdata['member']
                 from_date = psdata['plan_from_date'].strftime('%Y_%m_%d')
                 to_date = psdata['plan_to_date'].strftime('%Y_%m_%d')
-                return HttpResponseRedirect('/%s/%s/%s/%s/'
-                   % ('planningtable', member_id, from_date, to_date))
+                list_type = psdata['list_type']
+                return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
+                   % ('planningtable', member_id, list_type, from_date, to_date))
 
                 #return HttpResponseRedirect('/%s/%s/'
                 #   % ('planupdate', member_id))
@@ -173,6 +174,7 @@ def plan_selection(request):
         plan_init = {
             'plan_from_date': from_date,
             'plan_to_date': to_date,
+            'list_type': 'M',
         }
         init = {
             'from_date': from_date,
@@ -188,7 +190,7 @@ def plan_selection(request):
             }, context_instance=RequestContext(request))
 
 @login_required
-def planning_table(request, member_id, from_date, to_date):
+def planning_table(request, member_id, list_type, from_date, to_date):
     try:
         member = Party.objects.get(pk=member_id)
     except Party.DoesNotExist:
@@ -208,7 +210,16 @@ def planning_table(request, member_id, from_date, to_date):
     from_date = from_date - datetime.timedelta(days=datetime.date.weekday(from_date))
     to_date = to_date - datetime.timedelta(days=datetime.date.weekday(to_date)+1)
     to_date = to_date + datetime.timedelta(days=7)
-    plan_table = plan_weeks(member, from_date, to_date)
+    products = None
+    if list_type == "M":
+        if role == "consumer":
+            products = CustomerProduct.objects.filter(customer=member, planned=True)
+        else:
+            products = ProducerProduct.objects.filter(producer=member, planned=True)
+    if not products:
+        products = Product.objects.filter(plannable=True)
+        list_type = "A"
+    plan_table = plan_weeks(member, products, from_date, to_date)
     forms = create_weekly_plan_forms(plan_table.rows, data=request.POST or None)
     if request.method == "POST":
         #import pdb; pdb.set_trace()
@@ -280,6 +291,14 @@ def planning_table(request, member_id, from_date, to_date):
                                 #distributor,
                             )
                             new_plan.save()
+                            #import pdb; pdb.set_trace()
+                            if role == "producer":
+                                listed_product, created = ProducerProduct.objects.get_or_create(
+                                    product=product, producer=member)
+                            elif role == "consumer":
+                                listed_product, created = CustomerProduct.objects.get_or_create(
+                                    product=product, customer=member)
+
                     else:
                         if plan:
                             if plan.from_date >= from_dt and plan.to_date <= to_dt:
@@ -318,6 +337,8 @@ def planning_table(request, member_id, from_date, to_date):
             'plan_table': plan_table,
             'forms': forms,
             'plan_type': plan_type,
+            'member': member,
+            'list_type': list_type,
         })
 
 

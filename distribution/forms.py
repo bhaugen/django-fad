@@ -280,6 +280,8 @@ class PlanSelectionForm(forms.Form):
         widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
     plan_to_date = forms.DateField(
         widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
+    list_type = forms.ChoiceField( widget=forms.RadioSelect(), choices=[
+        ['M','Member Product List'],['A','All Products']] )
 
     def __init__(self, *args, **kwargs):
         super(PlanSelectionForm, self).__init__(*args, **kwargs)
