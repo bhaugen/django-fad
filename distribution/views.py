@@ -140,7 +140,7 @@ def plan_selection(request):
                 from_date = data['from_date'].strftime('%Y_%m_%d')
                 to_date = data['to_date'].strftime('%Y_%m_%d')
                 return HttpResponseRedirect('/%s/%s/%s/'
-                    % ('supplydemand', from_date, to_date))
+                    % ('distribution/supplydemand', from_date, to_date))
 
         elif request.POST.get('submit-income'):
             income_form = DateRangeSelectionForm(prefix='inc', data=request.POST)  
@@ -149,7 +149,7 @@ def plan_selection(request):
                 from_date = data['from_date'].strftime('%Y_%m_%d')
                 to_date = data['to_date'].strftime('%Y_%m_%d')
                 return HttpResponseRedirect('/%s/%s/%s/'
-                    % ('income', from_date, to_date))
+                    % ('distribution/income', from_date, to_date))
         
         else:
             psform = PlanSelectionForm(request.POST)  
@@ -160,7 +160,7 @@ def plan_selection(request):
                 to_date = psdata['plan_to_date'].strftime('%Y_%m_%d')
                 list_type = psdata['list_type']
                 return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-                   % ('planningtable', member_id, list_type, from_date, to_date))
+                   % ('distribution/planningtable', member_id, list_type, from_date, to_date))
 
                 #return HttpResponseRedirect('/%s/%s/'
                 #   % ('planupdate', member_id))
@@ -329,7 +329,7 @@ def planning_table(request, member_id, list_type, from_date, to_date):
         from_date = from_date.strftime('%Y_%m_%d')
         to_date = to_date.strftime('%Y_%m_%d')
         return HttpResponseRedirect('/%s/%s/%s/%s/'
-                    % ('membersupplydemand', from_date, to_date, member_id))
+                    % ('distribution/membersupplydemand', from_date, to_date, member_id))
     return render_to_response('distribution/planning_table.html', 
         {
             'from_date': from_date,
@@ -379,7 +379,7 @@ def plan_update(request, prod_id):
                         item.role = role
                         item.save()
             return HttpResponseRedirect('/%s/%s/'
-               % ('producerplan', member_id))
+               % ('distribution/producerplan', member_id))
         else:
             for itemform in itemforms:
                 if not itemform.is_valid():
@@ -399,7 +399,7 @@ def inventory_selection(request):
             producer_id = ihdata['producer']
             inv_date = ihdata['avail_date']
             return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-               % ('inventoryupdate', producer_id, inv_date.year, inv_date.month, inv_date.day))
+               % ('distribution/inventoryupdate', producer_id, inv_date.year, inv_date.month, inv_date.day))
     else:
         #ihform = InventorySelectionForm(initial={'avail_date': availdate, })
     #return render_to_response('distribution/inventory_selection.html', {'avail_date': availdate, 'header_form': ihform})
@@ -460,7 +460,7 @@ def inventory_update(request, prod_id, year, month, day):
                         #item.notes = notes
                         item.save()
             return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-               % ('produceravail', producer_id, year, month, day))
+               % ('distribution/produceravail', producer_id, year, month, day))
     else:
         itemforms = create_inventory_item_forms(producer, availdate)
     return render_to_response('distribution/inventory_update.html', {'avail_date': availdate, 'producer': producer, 'item_forms': itemforms})
@@ -476,10 +476,10 @@ def order_selection(request):
             ord_date = ihdata['order_date']
             if ordering_by_lot():
                 return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-                   % ('orderbylot', customer_id, ord_date.year, ord_date.month, ord_date.day))
+                   % ('distribution/orderbylot', customer_id, ord_date.year, ord_date.month, ord_date.day))
             else:
                 return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-                   % ('orderupdate', customer_id, ord_date.year, ord_date.month, ord_date.day))
+                   % ('distribution/orderupdate', customer_id, ord_date.year, ord_date.month, ord_date.day))
     else:
         #ihform = OrderSelectionForm(initial={'order_date': orderdate, })
     #return render_to_response('distribution/order_selection.html', {'order_date': orderdate, 'header_form': ihform})
@@ -568,7 +568,7 @@ def order_update(request, cust_id, year, month, day):
                         oi.product = product
                         oi.save()
             return HttpResponseRedirect('/%s/%s/'
-               % ('order', the_order.id))
+               % ('distribution/order', the_order.id))
     else:
         if order:
             ordform = OrderForm(order=order, instance=order)
@@ -738,7 +738,7 @@ def order_by_lot(request, cust_id, year, month, day):
                         delivery.save()
 
             return HttpResponseRedirect('/%s/%s/'
-               % ('order', the_order.id))
+               % ('distribution/order', the_order.id))
         #if invalid
         else:
             #print "ordform:", ordform
@@ -794,7 +794,7 @@ def order_entry(request):
                     oi.product = product
                     oi.save()
             return HttpResponseRedirect('/%s/%s/'
-               % ('order', new_order.id))
+               % ('distribution/order', new_order.id))
     else:
         ordform = OrderForm(initial={'order_date': orderdate, })
         itemforms = create_order_item_forms(availdate, orderdate)
@@ -810,7 +810,7 @@ def delivery_selection(request):
             cust_id = dsdata['customer']
             ord_date = dsdata['order_date']
             return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-               % ('deliveryupdate', cust_id, ord_date.year, ord_date.month, ord_date.day))
+               % ('distribution/deliveryupdate', cust_id, ord_date.year, ord_date.month, ord_date.day))
     else:
         #dsform = DeliverySelectionForm(initial={'order_date': order_date, })
     #return render_to_response('distribution/delivery_selection.html', {'order_date': order_date, 'header_form': dsform})
@@ -870,7 +870,7 @@ def delivery_update(request, cust_id, year, month, day):
                             delivery.transaction_type='Delivery'
                             delivery.save()
         return HttpResponseRedirect('/%s/%s/%s/%s/' 
-                                    % ('orderdeliveries', year, month, day))
+                                    % ('distribution/orderdeliveries', year, month, day))
     else:
         itemforms = create_delivery_forms(thisdate, customer)
     return render_to_response('distribution/delivery_update.html', {
@@ -956,16 +956,16 @@ def order_table_selection(request):
             if request.POST.get('submit-order-table'):
                 if ordering_by_lot():
                     return HttpResponseRedirect('/%s/%s/%s/%s/'
-                        % ('ordertable', ord_date.year, ord_date.month, ord_date.day))
+                        % ('distribution/ordertable', ord_date.year, ord_date.month, ord_date.day))
                 else:
                     return HttpResponseRedirect('/%s/%s/%s/%s/'
-                        % ('ordertablebyproduct', ord_date.year, ord_date.month, ord_date.day))
+                        % ('distribution/ordertablebyproduct', ord_date.year, ord_date.month, ord_date.day))
             elif request.POST.get('submit-short-changes'):
                 return HttpResponseRedirect('/%s/%s/%s/%s/'
-                    % ('shortschanges', ord_date.year, ord_date.month, ord_date.day))
+                    % ('distribution/shortschanges', ord_date.year, ord_date.month, ord_date.day))
             else:
                 return HttpResponseRedirect('/%s/%s/%s/%s/'
-                    % ('shorts', ord_date.year, ord_date.month, ord_date.day))
+                    % ('distribution/shorts', ord_date.year, ord_date.month, ord_date.day))
     else:
         dsform = DateSelectionForm(initial=init)
     return render_to_response('distribution/order_table_selection.html', 
@@ -1059,7 +1059,7 @@ def shorts(request, year, month, day):
                         item.save()
                         changed_items.append(item)
         return HttpResponseRedirect('/%s/%s/%s/%s/'
-            % ('shortschanges', thisdate.year, thisdate.month, thisdate.day))
+            % ('distribution/shortschanges', thisdate.year, thisdate.month, thisdate.day))
     return render_to_response('distribution/shorts.html', 
         {'date': thisdate, 
          'shorts_table': shorts_table  })
@@ -1305,7 +1305,7 @@ def reset_week(request):
                 food_network.save()
         except FoodNetwork.DoesNotExist:
             pass
-    return HttpResponseRedirect("/dashboard/")   
+    return HttpResponseRedirect("/distribution/dashboard/")   
 
 def all_orders(request):
     return list_detail.object_list(
@@ -1344,7 +1344,7 @@ def payment_selection(request):
             due = 1 if ihdata['due'] else 0
             paid_member = ihdata['paid_member']
             return HttpResponseRedirect('/%s/%s/%s/%s/%s/%s/'
-               % ('producerpayments', producer_id, from_date, to_date, due, paid_member))
+               % ('distribution/producerpayments', producer_id, from_date, to_date, due, paid_member))
     else:
         #ihform = PaymentSelectionForm(initial={'from_date': thisdate, 'to_date': thisdate })
     #return render_to_response('distribution/payment_selection.html', {'avail_date': thisdate, 'header_form': ihform})
@@ -1360,7 +1360,7 @@ def statement_selection(request):
             from_date = hdrdata['from_date'].strftime('%Y_%m_%d')
             to_date = hdrdata['to_date'].strftime('%Y_%m_%d')
             return HttpResponseRedirect('/%s/%s/%s/'
-               % ('statements', from_date, to_date))
+               % ('distribution/statements', from_date, to_date))
     else:
         hdrform = StatementSelectionForm()
     return render_to_response('distribution/statement_selection.html', {'header_form': hdrform})
@@ -1852,7 +1852,7 @@ def payment_update_selection(request):
             producer = psdata['producer'] if psdata['producer'] else 0
             payment = psdata['payment'] if psdata['payment'] else 0
             return HttpResponseRedirect('/%s/%s/%s/'
-               % ('paymentupdate', producer, payment))
+               % ('distribution/paymentupdate', producer, payment))
     else:
         psform = PaymentUpdateSelectionForm()
     return render_to_response('distribution/payment_update_selection.html', {'selection_form': psform})
@@ -1911,7 +1911,7 @@ def payment_update(request, producer_id, payment_id):
                 else:
                     tx.delete_payments()
             return HttpResponseRedirect('/%s/%s/'
-               % ('payment', the_payment.id))
+               % ('distribution/payment', the_payment.id))
         #else:
         #    import pdb; pdb.set_trace()
     else:
@@ -1939,7 +1939,7 @@ def invoice_selection(request):
             cust_id = dsdata['customer']
             ord_date = dsdata['order_date']
             return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-               % ('invoices', cust_id, ord_date.year, ord_date.month, ord_date.day))
+               % ('distribution/invoices', cust_id, ord_date.year, ord_date.month, ord_date.day))
     else:
         dsform = DeliverySelectionForm(initial=init)
     return render_to_response('distribution/invoice_selection.html', {'header_form': dsform})
@@ -1987,7 +1987,7 @@ def advance_dates():
 def next_week(request):
     if request.method == "POST":
         advance_dates()
-        return HttpResponseRedirect('/dashboard')
+        return HttpResponseRedirect('/distribution/dashboard')
     else:
         return render_to_response('distribution/next_week.html')
     
@@ -2180,7 +2180,7 @@ def meat_update(request, prod_id, year, month, day):
                                 processor=processor,
                                 cost=cost).save()
             return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-               % ('meatavail', producer_id, year, month, day))
+               % ('distribution/meatavail', producer_id, year, month, day))
                 
     else:
         formset = create_meat_item_forms(producer, avail_date, data=None)
@@ -2204,7 +2204,7 @@ def process_selection(request):
             data = psform.cleaned_data
             process_type_id = data['process_type']
             return HttpResponseRedirect('/%s/%s/'
-               % ('newprocess', process_type_id))
+               % ('distribution/newprocess', process_type_id))
     return render_to_response('distribution/process_selection.html', {
         'process_date': process_date,
         'header_form': psform,
@@ -2342,7 +2342,7 @@ def new_process(request, process_type_id):
                         tx.save()
 
             return HttpResponseRedirect('/%s/%s/'
-               % ('process', process.id))
+               % ('distribution/process', process.id))
 
     return render_to_response('distribution/new_process.html', {
         'input_lot_qties': input_lot_qties,

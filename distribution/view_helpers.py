@@ -43,16 +43,28 @@ class SupplyDemandTable(object):
 
 def supply_demand_table(from_date, to_date, member=None):
     plans = ProductPlan.objects.all()
+    cps = ProducerProduct.objects.filter(
+        inventoried=False,
+        default_quantity__gt=0,
+    )
+    constants = {}
+    for cp in cps:
+        constants.setdefault(cp.product, Decimal("0"))
+        constants[cp.product] += cp.default_quantity
     if member:
         plans = plans.filter(member=member)
     rows = {}    
     for plan in plans:
         wkdate = from_date
+        product = plan.product.supply_demand_product()
+        constant = Decimal('0')
+        cp = constants.get(product)
+        if cp:
+            constant = cp
         row = []
         while wkdate <= to_date:
-            row.append(Decimal("0"))
+            row.append(constant)
             wkdate = wkdate + datetime.timedelta(days=7)
-        product = plan.product.supply_demand_product()
         row.insert(0, product)
         rows.setdefault(product, row)
         wkdate = from_date
