@@ -1,11 +1,13 @@
-from django.db import models
 import datetime
 from decimal import *
+import itertools
+
+from django.db import models
+from django.contrib.auth.models import User
 from django.db.models import Q
 from django.contrib.localflavor.us.models import PhoneNumberField
 from django.contrib.contenttypes.models import ContentType
 from django.db.models.query import QuerySet
-import itertools
 
 
 def customer_fee():
@@ -132,8 +134,9 @@ class PartyManager(models.Manager):
         producers = []
         all_prods = Party.subclass_objects.all()
         for prod in all_prods:
-            if prod.product_plans.all().count():
-                producers.append(prod)
+            if prod.is_producer():
+                if prod.product_plans.all().count():
+                    producers.append(prod)
         return producers
 
     def all_distributors(self):
@@ -227,6 +230,12 @@ class Party(models.Model):
         
     def formatted_address(self):
         return self.address.split(',')
+
+
+class PartyUser(models.Model):
+    party = models.ForeignKey(Party, related_name="users")
+    user = models.ForeignKey(User, related_name="parties")
+
          
 
 class FoodNetwork(Party):
@@ -671,10 +680,31 @@ class ProducerProduct(models.Model):
     class Meta:
         ordering = ('producer', 'product')
 
+#todo: obsolete
+#def product_list_names(customer):
+#    names = MemberProductList.objects.filter(
+#        customer=customer,
+#    ).values_list("list_name")
+#    names = (name[0] for name in names)
+#    return list(set(names))
+
+
+class MemberProductList(models.Model):
+    member = models.ForeignKey(Party, related_name="product_lists")
+    list_name = models.CharField(max_length=64)
+    description = models.CharField(max_length=255)
+
+    def __unicode__(self):
+        return " ".join([
+            self.member.short_name,
+            self.list_name,])
+
 
 class CustomerProduct(models.Model):
     customer = models.ForeignKey(Party, related_name="customer_products") 
-    product = models.ForeignKey(Product)
+    product = models.ForeignKey(Product, limit_choices_to = {'plannable': True})
+    product_list = models.ForeignKey(MemberProductList, blank=True, null=True,
+        help_text='You may separate products into different lists.')
     list = models.CharField(max_length=64, blank=True,
         help_text='You may separate products into different lists.')
     default_quantity = models.DecimalField(max_digits=8, decimal_places=2,
@@ -682,16 +712,15 @@ class CustomerProduct(models.Model):
     planned = models.BooleanField(default=True,
         help_text='Should this product appear in Plan forms?')
 
-    
-    def __unicode__(self):
-        return " ".join([
-            self.customer.short_name,
-            self.product.short_name,])
         
     class Meta:
         ordering = ('customer', 'product')
 
-        
+    def __unicode__(self):
+        return " ".join([
+            self.customer.short_name,
+            self.product.short_name,])
+
 
 class InventoryItem(models.Model):
     freeform_lot_id = models.CharField("Lot Id", max_length=64, blank=True,
@@ -943,11 +972,23 @@ class TransactionPayment(models.Model):
     amount_paid = models.DecimalField(max_digits=8, decimal_places=2)
 
 
+ORDER_STATES = (
+    ('Unsubmitted', 'Unsubmitted'),
+    ('Submitted', 'Submitted'),
+    ('Delivered', 'Delivered'),
+    ('Paid', 'Paid'),
+    ('Paid-Delivered', 'Paid and Delivered'),
+    ('Delivered-Paid', 'Delivered and Paid'),
+)
+
+
 class Order(models.Model):
     customer = models.ForeignKey(Customer) 
     order_date = models.DateField()
     distributor = models.ForeignKey(Party, blank=True, null=True, related_name="orders")
+    #todo: obsolete, or leave in for no-customer-app situations 
     paid = models.BooleanField(default=False, verbose_name="Order paid")
+    state = models.CharField(max_length=16, choices=ORDER_STATES, default='Submitted', blank=True)
 
     def __unicode__(self):
         return ' '.join([self.order_date.strftime('%Y-%m-%d'), self.customer.short_name])
@@ -957,6 +998,13 @@ class Order(models.Model):
         for delivery in deliveries:
             delivery.delete()
         super(Order, self).delete()
+
+    def is_paid(self):
+        if self.paid:
+            return True
+        if state == "Paid" or state == "Paid-Delivered" or state == "Delivered-Paid":
+            return True
+        return False
     
     def charge_name(self):
         return charge_name()

@@ -1,22 +1,12 @@
 {% extends "base.html" %}
 
-{% load humanize %}
-
 {% block title %}
-     Planning Table
+   New Product List  
 {% endblock %}
 
 {% block header %}
 
-<style>
-table thead
-{
-	position: fixed;
-}
-
-</style>
-
-<script type="text/javascript" src="http://o.aolcdn.com/dojo/1.1.0/dojo/dojo.xd.js"></script>
+    <script type="text/javascript" src="http://o.aolcdn.com/dojo/1.1.0/dojo/dojo.xd.js"></script>
     <script type="text/javascript" >
 
 		function cleanNumericInput(value)
@@ -48,7 +38,7 @@ table thead
 			if(isNaN(candidate))
 			{
 				evt.target.style.color = "red";
-				evt.target.value = "error";
+				evt.target.value = "Not number";
 				isValid = false;
 				var anim1 = dojo.animateProperty({
 						node: evt.target, delay: 1000,
@@ -86,6 +76,7 @@ table thead
 			return isValid;
 		}
 
+
 		function quantityChanged(evt)
 		{
 			//alert(evt.target.id + " changed: " + evt.target.value);
@@ -93,79 +84,93 @@ table thead
 
 		}
 
+
 		dojo.addOnLoad(function()
 		{
 			var queryNodes = dojo.query(".quantity-field");
 			for(var i=0;i<queryNodes.length;i++)
 			{
-				var node = queryNodes[i];
+				var node = queryNodes[i]
 				dojo.connect(node, "onblur", "quantityChanged");
-
 			}
-
 		});
-	</script>
+
+    </script>
+
+    <style>
+
+	input {font-size: 85%;}
+
+
+	table thead
+	{
+		position: fixed;
+	}
+
+    </style>
 
 {% endblock %}
 
 {% block content %}
 
-<div class="{{ nav_class }}">
+<div class="product-lists">
 
-	{% comment %}
-	{% include "distribution/tabnav.html" %}
-	{% endcomment %}
-	{% include tabnav %}
-
-	<h3 style="margin-bottom: 0; padding-top: 0; margin-top: 0; ">{{ plan_type }} Plan from {{ from_date }} to {{ to_date }}</h3>
-	<p style="margin-top: 0; font-style: italic; " >
-	{% ifequal list_type "A" %}
-		Using All Products.  Planned products go onto the {{ member }} Product List.
-	{% else %}
-		Using {{ member }} Product List
-	{% endifequal %}
-	</p>
+	{% include "customer/customer_tabnav.html" %}	
 
 	<form action="." method="POST" >
-	<input type="submit" value="Submit" />
-	<table class="ga-event-table" >
+	
+	<table >
+
+            <tr>
+                <th style="text-align: right; " >Customer:</th>
+		<td>{{ customer.short_name }} {{ customer.long_name }}</td>
+	    </tr>
+ 	    <tr>
+                <th style="text-align: right; " >List Name:</th>
+		<td>{{ list_form.list_name }} </td>
+	    </tr>
+	    <tr>
+                <th style="text-align: right; " >Description:</th>
+		<td>{{ list_form.description }} </td>
+            </tr>
+        </table>
+        <p>
+            <input type="submit" value="Submit" />
+        </p>
+
+	<table class="ga-event-table" style="font-size: 70%;" >
 		<thead>
-			<tr>
-				{% for column in plan_table.columns %}
-					{% if forloop.first %}
-						<th style="text-align: right; width: 13em; " >{{ column }}</th>
-					{% else %}
-					<th style="width: 4em; " >{{ column|date:"n-j" }}</th>
-					{% endif %}
-				{% endfor %}
-			</tr>
+		    <tr>
+			<th style="width: 20em; " >Category</th>
+                	<th style="width: 18em; " >Product</th>
+	                <th style="width: 10em; " >Default Qty</th>
+        	        <th style="width: 30px; " >Plan</th>
+                	<th style="width: 30px; " >Add</th>
+		</tr>
 		</thead>
 	</table>
 	<br />
-	<table class="ga-event-table" >
+	<table class="ga-event-table" style="font-size: 70%;"  >
 
-		<tbody>
-			{% for row in forms %}
-			<tr>
-				<th style="text-align: right; width: 13em; " >{{ row.product }}</th>
-				{{ row.formset.management_form }}
-				{% for cell in row.formset.forms %}
-					<td style="width: 4em; " >{{ cell.quantity }}</td>
-					{{ cell.from_date }}
-					{{ cell.to_date }}
-					{{ cell.plan_id }}
-					{{ cell.product_id }}
-				{% endfor %}			
-			</tr>
-			{% endfor %}
-		</tbody>
+	<tbody>
 
-	</table>
-	<input type="submit" value="Submit" />
-	</form>
 
+            {% for form in form_list %}
+                 <tr>
+					 <td class="read-only-td"  style="width: 20em; "  > {{ form.category }} </td>
+					<td class="read-only-td"  style="width: 18em; "  > {{ form.product_name }} </td>
+					<td style="width: 10em; " > {{ form.default_quantity }} </td>
+					<td style="width: 30px; " > {{ form.planned }} </td>
+					<td style="width: 30px; " > {{ form.added }} </td>
+					{{ form.product_id }}
+                </tr>
+		{% endfor %} 
+	</tbody>
+        </table>
+        <p>
+            <input type="submit" value="Submit" />
+        </p>
+    </form>
 </div>
-<div><p>.</p></div>
- 
-{% endblock %} 
+{% endblock %}
 

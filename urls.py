@@ -7,8 +7,12 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
     (r'^admin/(.*)', admin.site.root),
-    (r'^accounts/login/$', 'django.contrib.auth.views.login'),
+    #(r'^accounts/login/$', 'django.contrib.auth.views.login'),
+    (r'^account/', include('account.urls')),
     (r'^distribution/', include('distribution.urls')),
+    (r'^customer/', include('customer.urls')),
+    url(r'^nopermissions/$', direct_to_template, {"template":"account/no_permissions.html"},
+        name="no_permissions"),
 )
                            
 

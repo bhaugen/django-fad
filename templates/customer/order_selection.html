@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}
+     Order Selection
+{% endblock %}
+
+{% block content %}
+
+<div class="order">
+
+	{% include "customer/customer_tabnav.html" %}
+
+	<h3 style="padding-top: 0; margin-top: 0; " >Order Selection</h3>
+	
+	{% if unsubmitted_orders %}
+	<div style="border: 2px solid grey; float: left; width: 30%; padding-left: 1em;">
+		<h4>Unsubmitted orders:</h4>
+	</div>
+	{% endif %}
+
+	<div style="border: 2px solid grey; float: left; width: 30%; padding-left: 1em;">
+		<h4>New order:</h4>
+
+		<form action="." method="POST" >
+        		<table>
+			<tr>
+                		<th style="text-align: right; " >Delivery Date:</th>
+                		<td>
+					{{ selection_form.order_date }}
+				</td>
+				{% if selection_form.order_date.errors %}
+					<td style="color: red; " >
+						{{selection_form.order_date.errors }}
+					</td>
+				{% endif %}
+			</tr>
+			<tr>
+				<th style="text-align: right; " >Product List:</th>
+				<td>{{ selection_form.product_list }}</td>
+			</tr>
+
+
+			</table>
+			<p>
+            			<input type="submit" value="Submit" />
+			</p>
+		</form>
+
+
+	</div>
+
+	<div style="clear: both;" /></div>
+
+</div>
+
+{% endblock %}
+

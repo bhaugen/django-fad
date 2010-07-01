@@ -1,22 +1,12 @@
 {% extends "base.html" %}
 
-{% load humanize %}
-
 {% block title %}
-     Planning Table
+   Edit Product List  
 {% endblock %}
 
 {% block header %}
 
-<style>
-table thead
-{
-	position: fixed;
-}
-
-</style>
-
-<script type="text/javascript" src="http://o.aolcdn.com/dojo/1.1.0/dojo/dojo.xd.js"></script>
+    <script type="text/javascript" src="http://o.aolcdn.com/dojo/1.1.0/dojo/dojo.xd.js"></script>
     <script type="text/javascript" >
 
 		function cleanNumericInput(value)
@@ -48,7 +38,7 @@ table thead
 			if(isNaN(candidate))
 			{
 				evt.target.style.color = "red";
-				evt.target.value = "error";
+				evt.target.value = "Not number";
 				isValid = false;
 				var anim1 = dojo.animateProperty({
 						node: evt.target, delay: 1000,
@@ -86,6 +76,7 @@ table thead
 			return isValid;
 		}
 
+
 		function quantityChanged(evt)
 		{
 			//alert(evt.target.id + " changed: " + evt.target.value);
@@ -93,79 +84,63 @@ table thead
 
 		}
 
+
 		dojo.addOnLoad(function()
 		{
 			var queryNodes = dojo.query(".quantity-field");
 			for(var i=0;i<queryNodes.length;i++)
 			{
-				var node = queryNodes[i];
+				var node = queryNodes[i]
 				dojo.connect(node, "onblur", "quantityChanged");
-
 			}
-
 		});
-	</script>
+
+    </script>
+
+    <style>
+	    input {font-size: 85%;}
+    </style>
 
 {% endblock %}
 
 {% block content %}
 
-<div class="{{ nav_class }}">
+<div class="product-lists">
 
-	{% comment %}
-	{% include "distribution/tabnav.html" %}
-	{% endcomment %}
-	{% include tabnav %}
+	{% include "customer/customer_tabnav.html" %}	
 
-	<h3 style="margin-bottom: 0; padding-top: 0; margin-top: 0; ">{{ plan_type }} Plan from {{ from_date }} to {{ to_date }}</h3>
-	<p style="margin-top: 0; font-style: italic; " >
-	{% ifequal list_type "A" %}
-		Using All Products.  Planned products go onto the {{ member }} Product List.
-	{% else %}
-		Using {{ member }} Product List
-	{% endifequal %}
-	</p>
-
-	<form action="." method="POST" >
-	<input type="submit" value="Submit" />
-	<table class="ga-event-table" >
-		<thead>
-			<tr>
-				{% for column in plan_table.columns %}
-					{% if forloop.first %}
-						<th style="text-align: right; width: 13em; " >{{ column }}</th>
-					{% else %}
-					<th style="width: 4em; " >{{ column|date:"n-j" }}</th>
-					{% endif %}
+	<form method="post" action="">
+		<table>
+			{{ list_form.as_table }}
+		</table>
+		<p>
+            		<input type="submit" value="Submit" />
+        	</p>
+		<table class="ga-event-table" >
+			<thead>
+				<th>Product</th>
+				<th>Default Qty</th>
+		                <th>Plan</th>
+                		<th>Delete</th>
+			</thead>
+			<tbody>
+		    		{{ formset.management_form }}
+    				{% for form in formset.forms %}
+        				{{ form.id }}
+        				<tr>
+						<td>{{ form.product }}</td>
+						<td>{{ form.default_quantity }}</td>
+						<td>{{ form.planned }}</td>
+						<td>{{ form.DELETE }}</td>
+        				</tr>
 				{% endfor %}
-			</tr>
-		</thead>
-	</table>
-	<br />
-	<table class="ga-event-table" >
-
-		<tbody>
-			{% for row in forms %}
-			<tr>
-				<th style="text-align: right; width: 13em; " >{{ row.product }}</th>
-				{{ row.formset.management_form }}
-				{% for cell in row.formset.forms %}
-					<td style="width: 4em; " >{{ cell.quantity }}</td>
-					{{ cell.from_date }}
-					{{ cell.to_date }}
-					{{ cell.plan_id }}
-					{{ cell.product_id }}
-				{% endfor %}			
-			</tr>
-			{% endfor %}
-		</tbody>
-
-	</table>
-	<input type="submit" value="Submit" />
+			</tbody>
+		</table>
+		<p>
+	            <input type="submit" value="Submit" />
+        	</p>
 	</form>
 
 </div>
-<div><p>.</p></div>
- 
-{% endblock %} 
 
+{% endblock %}

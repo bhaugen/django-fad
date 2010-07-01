@@ -296,6 +296,8 @@ def planning_table(request, member_id, list_type, from_date, to_date):
                                 listed_product, created = ProducerProduct.objects.get_or_create(
                                     product=product, producer=member)
                             elif role == "consumer":
+                                #todo: shd these be auto-created at all?
+                                # and if so, what MemberProductList?
                                 listed_product, created = CustomerProduct.objects.get_or_create(
                                     product=product, customer=member)
 
@@ -339,6 +341,9 @@ def planning_table(request, member_id, list_type, from_date, to_date):
             'plan_type': plan_type,
             'member': member,
             'list_type': list_type,
+            'tabnav': "distribution/tabnav.html",
+            'nav_class': 'plan-update',
+
         })
 
 
@@ -1185,6 +1190,7 @@ def member_supply_and_demand(request, from_date, to_date, member_id):
         })
 
 
+@login_required
 def supply_and_demand_week(request, week_date):
     try:
         week_date = datetime.datetime(*time.strptime(week_date, '%Y_%m_%d')[0:5]).date()
@@ -2415,5 +2421,5 @@ def delete_process(request, process_id):
             service.delete() 
         process.delete()
      
-        return HttpResponseRedirect(reverse("process_selection"))
+        return HttpResponseRedirect(reverse("distribution/process_selection"))
 

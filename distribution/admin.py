@@ -64,10 +64,22 @@ admin.site.register(ProducerProduct, ProducerProductAdmin)
 
 class CustomerProductAdmin(admin.ModelAdmin):
     list_display = ('customer', 'product', 'default_quantity',
-                     'planned')
+                     'planned', 'product_list')
     list_filter = ['customer', 'product']
     
 admin.site.register(CustomerProduct, CustomerProductAdmin)
+
+
+class MemberProductListAdmin(admin.ModelAdmin):
+    list_display = ('member', 'list_name', 'description')
+    list_filter = ['member', ]
+    
+admin.site.register(MemberProductList, MemberProductListAdmin)
+
+class PartyUserAdmin(admin.ModelAdmin):
+    list_display = ('user', 'party')
+    
+admin.site.register(PartyUser, PartyUserAdmin)
 
 
 class InventoryItemAdmin(admin.ModelAdmin):

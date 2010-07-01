@@ -67,6 +67,8 @@ MIDDLEWARE_CLASSES = (
 )
 
 ROOT_URLCONF = 'django-fad.urls'
+LOGIN_URL = "/account/login"
+LOGIN_REDIRECT_URLNAME = "no_permissions"
 
 TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
@@ -83,6 +85,8 @@ INSTALLED_APPS = (
     'django_extensions',
     'django.contrib.humanize',
     'distribution',
+    'customer',
+    'producer',
     'notification',
     'mailer',
     'django.contrib.flatpages',
