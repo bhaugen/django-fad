@@ -244,22 +244,27 @@ class FoodNetwork(Party):
     billing_address = models.CharField(max_length=96, blank=True, null=True, 
             help_text='Enter commas only where you want to split address lines for formatting.')
     billing_email_address = models.EmailField(max_length=96, blank=True, null=True)
-    customer_terms = models.IntegerField(blank=True, null=True,
+    customer_terms = models.IntegerField(default=0,
         help_text='Net number of days for customer to pay invoice')
     member_terms = models.IntegerField(blank=True, null=True,
         help_text='Net number of days for network to pay member')
-    customer_fee = models.DecimalField(max_digits=3, decimal_places=2, 
+    customer_fee = models.DecimalField(max_digits=3, decimal_places=2, default=Decimal("0"),
         help_text='Fee is a decimal fraction, not a percentage - for example, .05 instead of 5%')
-    producer_fee = models.DecimalField(max_digits=3, decimal_places=2, 
+    producer_fee = models.DecimalField(max_digits=3, decimal_places=2, default=Decimal("0"),
         help_text='Fee is a decimal fraction, not a percentage - for example, .05 instead of 5%') 
     # next 2 fields are obsolete   
-    charge = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True,
+    charge = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0"),
         help_text='Charge will be added to all orders unless overridden on the Customer')
     charge_name = models.CharField(max_length=32, blank=True, default='Delivery charge')
     current_week = models.DateField(default=datetime.date.today, 
         help_text='Current week for operations availability and orders')
     order_by_lot = models.BooleanField(default=False, 
         help_text='Assign lots when ordering, or assign them later')
+
+
+    class Meta:
+        ordering = ('short_name',)
+
 
     def __unicode__(self):
         return self.short_name
@@ -270,9 +275,8 @@ class FoodNetwork(Party):
     def email(self):
         return self.email_address
 
-    class Meta:
-        ordering = ('short_name',)
-
+    def transportation_fee(self):
+        return self.charge
     
     def fresh_list(self, thisdate = None):
         if not thisdate:
@@ -442,8 +446,10 @@ class Customer(Party):
 
     def __unicode__(self):
         return self.short_name
+
     def formatted_address(self):
         return self.address.split(',')
+
     def order_charge(self):
         answer = Decimal(0)
         if self.apply_charge:
@@ -453,6 +459,16 @@ class Customer(Party):
                 answer = default_charge()
         return answer
     
+    def distributor(self):
+        #todo: revise when 5S distributor assignments are clear
+        # maybe add distributor field to Customer or some logic on FoodNetwork 
+        return Distributor.objects.all()[0]
+
+    def transportation_fee(self):
+        #todo: revise when 5S fees are clear
+        # maybe add transportation_fee field to Customer or some logic on FoodNetwork
+        return FoodNetwork.objects.get(pk=1).transportation_fee()
+
     @property
     def email(self):
         return self.email_address
@@ -501,6 +517,9 @@ class Product(models.Model):
 
     def __unicode__(self):
         return self.long_name
+
+    def formatted_unit_price(self):
+        return self.price.quantize(Decimal('.01'), rounding=ROUND_UP)
     
     def avail_items(self, thisdate):
         weekstart = thisdate - datetime.timedelta(days=datetime.date.weekday(thisdate))
@@ -559,6 +578,9 @@ class Product(models.Model):
         weekend = weekstart + datetime.timedelta(days=5)
         myorders = OrderItem.objects.filter(product=self, order__order_date__range=(weekstart, weekend))
         return sum(order.quantity for order in myorders)
+
+    def avail_for_customer(self, thisdate):
+        return self.total_avail(thisdate) - self.total_ordered(thisdate)
     
     def deliveries_this_week(self, thisdate):
         weekstart = thisdate - datetime.timedelta(days=datetime.date.weekday(thisdate))
@@ -1017,7 +1039,7 @@ class Order(models.Model):
             transportation_tx = TransportationTransaction.objects.get(order=self)
             return transportation_tx.amount
         except TransportationTransaction.DoesNotExist:
-            return Decimal("0")
+            return FoodNetwork.objects.get(pk=1).transportation_fee()
     
     def total_price(self):
         items = self.orderitem_set.all()
@@ -1176,6 +1198,9 @@ class OrderItem(models.Model):
         answer = self.quantity * self.unit_price * producer_fee()
         return answer.quantize(Decimal('.01'), rounding=ROUND_UP)
     
+    def formatted_unit_price(self):
+        return self.unit_price.quantize(Decimal('.01'), rounding=ROUND_UP)
+
     def customer_fee(self):
         return customer_fee()
 

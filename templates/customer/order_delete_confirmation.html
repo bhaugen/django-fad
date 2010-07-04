@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-     Order
+     Order Delete Confirmation
 {% endblock %}
 
 {% block header %}
@@ -13,6 +13,17 @@
 <div class="order">
 
 	{% include "customer/customer_tabnav.html" %}
+
+	<h3>Are you sure you want to delete this order?</h3>
+
+	<div style="margin-left: 2em; margin-bottom: 1em; ">
+		<form style="display: inline;" action="{% url delete_order order_id=order.id %}" method="POST">
+    			<input type="submit" value="Delete" />
+		</form>
+		<form style="display: inline;" action="{% url order_selection %}" method="GET">
+    			<input type="submit" value="Cancel" />
+		</form>
+	</div>
 
 
     <table style="margin-bottom: 1em;" >
@@ -28,9 +39,13 @@
             <th style="text-align: right; " >Date: </th>
             <td>{{order.order_date}}</td>
         </tr>
-	<tr>
+		<tr>
             <th style="text-align: right; " >Distributor: </th>
             <td>{{order.distributor}}</td>
+        </tr>
+		<tr>
+            <th style="text-align: right; " >Transportation Fee: </th>
+            <td>{{order.transportation_fee}}</td>
         </tr>
         <tr>
             <th style="text-align: right; " >Paid?</th>
@@ -59,36 +74,21 @@
             </tr>
         {% endfor %}
     </table>
-    <table style="margin-top: 1em; margin-left: 9em; " >
-		<tr>
-			<th style="text-align: right;" >Total Price:</th>
-			<td style="text-align: right;" >${{ order.total_price }}</td>
-		</tr>
-
+    <table style="margin-top: 1em; margin-left: 3em; " >
 		{% if order.charge %}
 			<tr>
 				<th style="text-align: right;" >{{ order.charge_name }}:</th>
 				<td style="text-align: right;" >${{ order.charge }}</td>
 			</tr>
 		{% endif %}
-		{% if order.transportation_fee %}
-			<tr>
-				<th style="text-align: right;" >Transportation Fee:</th>
-				<td style="text-align: right;" >${{ order.display_transportation_fee }}</td>
-			</tr>
-		{% endif %}
 		<tr>
-			<th style="text-align: right;" >Co-op Fee:</th>
-			<td style="text-align: right;" >${{ order.coop_fee }}</td>
-		</tr>
-
-		<tr>
-			<th style="text-align: right;" >Grand Total:</th>
-			<td style="text-align: right;" >${{ order.grand_total }}</td>
+			<th style="text-align: right;" >Total:</th>
+			<td style="text-align: right;" >${{ order.total_price }}</td>
 		</tr>
     </table>
     
 </div>    
 {% endblock %} 
+
 
 

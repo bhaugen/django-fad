@@ -26,20 +26,32 @@ def create_edit_product_list_forms(customer, data=None):
     return
 
 
-def create_order_item_forms(order, availdate, orderdate, data=None):
+def create_order_item_forms(order, product_list, availdate, orderdate, data=None):
     form_list = []
     item_dict = {}
     if order:
         items = order.orderitem_set.all()
         for item in items:
             item_dict[item.product.id] = item
-    prods = list(Product.objects.filter(sellable=True))
-    for prod in prods:
-        prod.parents = prod.parent_string()
+    products = list(Product.objects.filter(sellable=True))
+    if product_list:
+        listed_products = CustomerProduct.objects.filter(
+            product_list=product_list).values_list("product_id")
+        listed_products = set(id[0] for id in listed_products)
+    prods = []
+    for prod in products:
+        ok = True
+        if product_list:
+            if not prod.id in listed_products:
+                ok = False
+        if ok:
+            prod.parents = prod.parent_string()
+            prods.append(prod)
     prods.sort(lambda x, y: cmp(x.parents, y.parents))
     for prod in prods:
-        totavail = prod.total_avail(availdate)
-        totordered = prod.total_ordered(orderdate)
+        #totavail = prod.total_avail(availdate)
+        totavail = prod.avail_for_customer(availdate)
+        #totordered = prod.total_ordered(orderdate)
         try:
             item = item_dict[prod.id]
         except KeyError:
@@ -56,7 +68,8 @@ def create_order_item_forms(order, availdate, orderdate, data=None):
             initial_data = {
                 'prod_id': prod.id,
                 'avail': totavail,
-                'ordered': totordered,
+                'unit_price': item.formatted_unit_price(),
+                #'ordered': totordered,
             }
             oiform = OrderItemForm(data, prefix=prod.id, instance=item,
                                    initial=initial_data)
@@ -75,8 +88,8 @@ def create_order_item_forms(order, availdate, orderdate, data=None):
                     'prod_id': prod.id, 
                     'description': prod.long_name, 
                     'avail': totavail, 
-                    'ordered': totordered, 
-                    'unit_price': prod.price, 
+                    #'ordered': totordered, 
+                    'unit_price': prod.formatted_unit_price(), 
                     'quantity': 0})
                 oiform.description = prod.long_name
                 oiform.producers = producers

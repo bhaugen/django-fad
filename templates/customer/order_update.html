@@ -105,13 +105,14 @@
 		{
 			var up = parseFloat(dojo.byId(row + '-unit_price').value);
 			var qty = parseFloat(dojo.byId(row + '-quantity').value);
-			dojo.byId(row + '-ext_price').innerHTML = up * qty;
+			var xPrice = up * qty;
+			dojo.byId(row + '-ext_price').innerHTML = xPrice.toFixed(2);
 		}
 
 		function finishQuantityChange(evt)
 		{
 			var row = evt.target.id.split('-')[0];
-			changeTotalOrdered(row);
+			//changeTotalOrdered(row);
 			extendPriceForRow(row);
 		}
 
@@ -196,6 +197,7 @@
 				extendPriceForRow(row);
 				thisOrderQty[node.id] = node.value;
 			}
+			/*
 			var queryNodes = dojo.query(".unit-price-field");
 			for(var i=0;i<queryNodes.length;i++)
 			{
@@ -212,6 +214,7 @@
 				var thisNode = queryNodes[i];
 				orderedTotals[thisNode.id] = thisNode.value;
 			}
+			*/
 		});
 
     </script>
@@ -261,7 +264,7 @@
                 <!--<th>Description</th>-->
                 <th>Producers</th>
                 <th>Available</th>
-                <th>Ordered</th>
+		<!--<th>Ordered</th>-->
                 <th>Unit Price</th>
                 <th>Order Qty</th>
                 <th>Extended</th>
@@ -274,7 +277,7 @@
 					<!--<td class="read-only-td" > {{ item_form.description }} </td>-->
 					<td class="read-only-td" > {{ item_form.producers }} </td>
 					<td class="read-only-td" > {{ item_form.avail }} </td>
-					<td class="read-only-td" > {{ item_form.ordered }} </td>
+					<!--<td class="read-only-td" > {{ item_form.ordered }} </td>-->
 					<td class="read-only-td" > {{ item_form.unit_price }} </td>
 					<td> {{ item_form.quantity }} </td>
 					<td id="id_{{ item_form.prefix }}-ext_price" class="read-only-td ext-price" style="text-align: right" ></td>
@@ -284,7 +287,7 @@
            {% endfor %} 
         </table>
         <p>
-            <input type="submit" value="Submit Order" />
+            <input type="submit" value="Save Order" />
         </p>
     </form>
 </div>

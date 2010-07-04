@@ -1,5 +1,6 @@
 import datetime
 import time
+from decimal import *
 
 from django.db.models import Q
 from django.http import Http404
@@ -40,18 +41,24 @@ def order_selection(request):
     food_network = FoodNetwork.objects.get(pk=1)
     customer = request.user.parties.all()[0].party
     selection_form = NewOrderSelectionForm(customer, data=request.POST or None)
+    unsubmitted_orders = Order.objects.filter(
+        customer=customer,
+        state="Unsubmitted")
 
     if request.method == "POST":
         if selection_form.is_valid():
             sf_data = selection_form.cleaned_data
+            product_list = sf_data['product_list']
             ord_date = sf_data['order_date']
-            return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
-               % ('customer/neworder', customer.id, ord_date.year, ord_date.month, ord_date.day))
+            return HttpResponseRedirect('/%s/%s/%s/%s/%s/%s/'
+               % ('customer/neworder', customer.id, ord_date.year,
+                  ord_date.month, ord_date.day, product_list))
 
     return render_to_response('customer/order_selection.html', 
         {'customer': customer,
          'food_network': food_network,
          'selection_form': selection_form,
+         'unsubmitted_orders': unsubmitted_orders,
          }, context_instance=RequestContext(request))
 
 def list_selection(request):
@@ -106,10 +113,7 @@ def plan_selection(request):
 
 @login_required
 def new_product_list(request, cust_id):
-    try:
-        customer = Party.objects.get(pk=cust_id)
-    except Party.DoesNotExist:
-        raise Http404
+    customer = get_object_or_404(Party, pk=cust_id)
     list_form = ProductListForm(data=request.POST or None)
     form_list = create_new_product_list_forms(data=request.POST or None)
     return render_to_response('customer/new_product_list.html', 
@@ -121,10 +125,7 @@ def new_product_list(request, cust_id):
 
 @login_required
 def edit_product_list(request, list_id):
-    try:
-        plist = MemberProductList.objects.get(pk=list_id)
-    except MemberProductList.DoesNotExist:
-        raise Http404
+    plist = get_object_or_404(MemberProductList, pk=list_id)
     list_form = ProductListForm(data=request.POST or None, instance=plist)
     ProductListInlineFormSet = inlineformset_factory(
         MemberProductList, CustomerProduct)
@@ -138,10 +139,7 @@ def edit_product_list(request, list_id):
 
 @login_required
 def planning_table(request, member_id, list_type, from_date, to_date):
-    try:
-        member = Party.objects.get(pk=member_id)
-    except Party.DoesNotExist:
-        raise Http404
+    member = get_object_or_404(Party, pk=member_id)
     role = "producer"
     plan_type = "Production"
     if member.is_customer():
@@ -300,33 +298,38 @@ def planning_table(request, member_id, list_type, from_date, to_date):
 # Q: do new and change need to do redirect, render_to_response, etc? 
 
 @login_required
-def new_order(request, cust_id, year, month, day):
+def new_order(request, cust_id, year, month, day, list_id=None):
     orderdate = datetime.date(int(year), int(month), int(day))
     availdate = orderdate
 
     order = None
 
-    try:
-        customer = Customer.objects.get(pk=int(cust_id))
-    except Customer.DoesNotExist:
-        raise Http404
+    customer = get_object_or_404(Customer, pk=int(cust_id))
+
+    product_list = None
+    list_id = int(list_id)
+    #import pdb; pdb.set_trace()
+    if list_id:
+        product_list = get_object_or_404(MemberProductList, pk=list_id)
 
     if request.method == "POST":
         ordform = OrderForm(data=request.POST)
         #import pdb; pdb.set_trace()
-        itemforms = create_order_item_forms(order, availdate, orderdate, request.POST)     
+        itemforms = create_order_item_forms(order, product_list, availdate, orderdate, request.POST)     
         if ordform.is_valid() and all([itemform.is_valid() for itemform in itemforms]):
             the_order = ordform.save(commit=False)
             the_order.customer = customer
+            the_order.distributor = customer.distributor()
             the_order.order_date = orderdate
+            the_order.state = "Unsubmitted"
             the_order.save()
 
-            update_order(order, itemforms)
+            update_order(the_order, itemforms)
             return HttpResponseRedirect('/%s/%s/'
                % ('customer/order', the_order.id))
     else:
         ordform = OrderForm(initial={'customer': customer, 'order_date': orderdate, })
-        itemforms = create_order_item_forms(order, availdate, orderdate)
+        itemforms = create_order_item_forms(order, product_list, availdate, orderdate)
     return render_to_response('customer/order_update.html', 
         {'customer': customer, 
          'order': order, 
@@ -337,17 +340,30 @@ def new_order(request, cust_id, year, month, day):
 
 
 @login_required
-def change_order(request, order_id):
-    try:
-        order = Order.objects.get(id=int(order_id))
-    except Order.DoesNotExist:
-        raise Http404
+def edit_order(request, order_id):
+    order = get_object_or_404(Order, id=int(order_id))
 
-    order_update(request, order.order_date, order.customer, order)
+    #obsolete: order_update(request, order.order_date, order.customer, order)
+
+@login_required
+def delete_order_confirmation(request, order_id):
+    order = get_object_or_404(Order, id=int(order_id))
+    return render_to_response('customer/order_delete_confirmation.html',
+            {'order': order}, context_instance=RequestContext(request))
+
+@login_required
+def delete_order(request, order_id):
+    if request.method == "POST":
+        order = get_object_or_404(Order, id=int(order_id))
+        order.delete()
+        return HttpResponseRedirect(reverse("customer_order_selection"))
+    return HttpResponseRedirect(reverse("customer_order_selection"))
+
 
 def update_order(order, itemforms):
-    transportation_fee = order.transportation_fee
+    transportation_fee = order.transportation_fee()
     distributor = order.distributor
+    customer = order.customer
     #import pdb; pdb.set_trace()
     if transportation_fee:
         transportation_tx = None
@@ -362,9 +378,9 @@ def update_order(order, itemforms):
             transportation_tx = TransportationTransaction(
                 from_whom=distributor,
                 to_whom=customer,
-                order=the_order, 
+                order=order, 
                 amount=transportation_fee,
-                transaction_date=orderdate)
+                transaction_date=order.order_date)
             transportation_tx.save()
 
     for itemform in itemforms:
@@ -383,11 +399,18 @@ def update_order(order, itemforms):
                 prod_id = data['prod_id']
                 product = Product.objects.get(id=prod_id)
                 oi = itemform.save(commit=False)
-                oi.order = the_order
+                oi.order = order
                 oi.product = product
                 oi.save()
     return True
 
+def order(request, order_id):
+    order = get_object_or_404(Order, pk=order_id)
+
+    #todo: find shorts for order items, adjust qties accordingly
+    return render_to_response('customer/order.html', {'order': order})
+
+# todo: remove when no longer needed for cut-n-pasting
 @login_required
 def order_update(request, orderdate, customer, order=None):
     availdate = orderdate

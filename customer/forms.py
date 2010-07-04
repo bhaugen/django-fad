@@ -15,7 +15,7 @@ class NewOrderSelectionForm(forms.Form):
         super(NewOrderSelectionForm, self).__init__(*args, **kwargs)
         choices = [(plist.id, plist.list_name) for plist in
                    MemberProductList.objects.filter(member=customer)]
-        choices.extend([('All', 'All Available Products')])
+        choices.extend([(0, 'All Available Products')])
         self.fields['product_list'].choices = choices
 
 class OrderForm(forms.ModelForm):
@@ -50,12 +50,12 @@ class OrderItemForm(forms.ModelForm):
          'size': '5', 
          'style': 'text-align: right;',
      }))
-     ordered = forms.DecimalField(widget=forms.TextInput(attrs={
-         'readonly':'true', 
-         'class': 'read-only-input total-ordered', 
-         'size': '5', 
-         'style': 'text-align: right;',
-     }))
+     #ordered = forms.DecimalField(widget=forms.TextInput(attrs={
+     #    'readonly':'true', 
+     #    'class': 'read-only-input total-ordered', 
+     #    'size': '5', 
+     #    'style': 'text-align: right;',
+     #}))
      quantity = forms.DecimalField(widget=forms.TextInput(attrs={
          'class': 'quantity-field', 
          'size': '5'
