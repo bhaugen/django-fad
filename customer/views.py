@@ -326,7 +326,7 @@ def new_order(request, cust_id, year, month, day, list_id=None):
 
             update_order(the_order, itemforms)
             return HttpResponseRedirect('/%s/%s/'
-               % ('customer/order', the_order.id))
+               % ('customer/order_confirmation', the_order.id))
     else:
         ordform = OrderForm(initial={'customer': customer, 'order_date': orderdate, })
         itemforms = create_order_item_forms(order, product_list, availdate, orderdate)
@@ -342,8 +342,31 @@ def new_order(request, cust_id, year, month, day, list_id=None):
 @login_required
 def edit_order(request, order_id):
     order = get_object_or_404(Order, id=int(order_id))
+    orderdate = order.order_date
+    availdate = orderdate
 
-    #obsolete: order_update(request, order.order_date, order.customer, order)
+    customer = order.customer
+    product_list = order.product_list
+
+    if request.method == "POST":
+        ordform = OrderForm(data=request.POST)
+        #import pdb; pdb.set_trace()
+        itemforms = create_order_item_forms(order, product_list, availdate, orderdate, request.POST)     
+        if ordform.is_valid() and all([itemform.is_valid() for itemform in itemforms]):
+            update_order(order, itemforms)
+            return HttpResponseRedirect('/%s/%s/'
+               % ('customer/orderconfirmation', order.id))
+    else:
+        ordform = OrderForm(instance=order)
+        itemforms = create_order_item_forms(order, product_list, availdate, orderdate)
+    return render_to_response('customer/order_update.html', 
+        {'customer': customer, 
+         'order': order, 
+         'order_date': orderdate, 
+         'avail_date': availdate, 
+         'order_form': ordform, 
+         'item_forms': itemforms}, context_instance=RequestContext(request))
+
 
 @login_required
 def delete_order_confirmation(request, order_id):
@@ -359,6 +382,17 @@ def delete_order(request, order_id):
         return HttpResponseRedirect(reverse("customer_order_selection"))
     return HttpResponseRedirect(reverse("customer_order_selection"))
 
+
+@login_required
+def submit_order(request, order_id):
+    if request.method == "POST":
+        order = get_object_or_404(Order, id=int(order_id))
+        order.state = "Submitted"
+        order.save()
+        return HttpResponseRedirect('/%s/%s/'
+               % ('customer/order', order.id))
+    return HttpResponseRedirect('/%s/%s/'
+        % ('customer/orderconfirmation', order.id))
 
 def update_order(order, itemforms):
     transportation_fee = order.transportation_fee()
@@ -404,10 +438,32 @@ def update_order(order, itemforms):
                 oi.save()
     return True
 
+def order_confirmation(request, order_id):
+    order = get_object_or_404(Order, pk=order_id)
+    food_network = FoodNetwork.objects.get(pk=1)
+    if not order.state == "Unsubmitted":
+        return render_to_response('customer/order.html', {
+            'order': order,
+        }, context_instance=RequestContext(request))
+    shorts = order.short_items()
+    return render_to_response('customer/order_confirmation.html', {
+        'order': order,
+        'shorts': shorts,
+        'food_network': food_network,
+    }, context_instance=RequestContext(request))
+
+def resave_short_adjusted_order(request, order_id):
+    if request.method == "POST":
+        order = get_object_or_404(Order, pk=order_id)
+        shorts = order.short_items()
+        for short in shorts:
+            short.quantity = short.short_adjusted_qty()
+            short.save()
+        return HttpResponseRedirect('/%s/%s/'
+               % ('customer/orderconfirmation', order.id))
+
 def order(request, order_id):
     order = get_object_or_404(Order, pk=order_id)
-
-    #todo: find shorts for order items, adjust qties accordingly
     return render_to_response('customer/order.html', {'order': order})
 
 # todo: remove when no longer needed for cut-n-pasting

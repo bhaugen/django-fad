@@ -95,7 +95,8 @@ class OrderItemInline(admin.TabularInline):
     model = OrderItem
 
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'order_date', 'customer', 'distributor', 'paid', )
+    list_display = ('id', 'order_date', 'customer', 'distributor', 'state',
+                    'product_list' )
     ordering = ('order_date',)
     list_filter = ['customer', 'paid']
     date_hierarchy = 'order_date'

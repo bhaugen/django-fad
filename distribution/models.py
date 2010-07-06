@@ -1008,9 +1008,15 @@ class Order(models.Model):
     customer = models.ForeignKey(Customer) 
     order_date = models.DateField()
     distributor = models.ForeignKey(Party, blank=True, null=True, related_name="orders")
-    #todo: obsolete, or leave in for no-customer-app situations 
+    #todo: obsolete, or leave in for no-customer-app situations?
     paid = models.BooleanField(default=False, verbose_name="Order paid")
     state = models.CharField(max_length=16, choices=ORDER_STATES, default='Submitted', blank=True)
+    product_list = models.ForeignKey(MemberProductList, blank=True, null=True,
+        related_name="orders", 
+        help_text="Optional: The product list this order was created from. Maintained by customer.")
+
+    class Meta:
+        ordering = ('order_date', 'customer')
 
     def __unicode__(self):
         return ' '.join([self.order_date.strftime('%Y-%m-%d'), self.customer.short_name])
@@ -1067,11 +1073,15 @@ class Order(models.Model):
     
     def coop_fee_label(self):
         fee = int(customer_fee() * 100)
-        return "".join([str(fee), "% Co-op Fee"])    
-        
+        return "".join([str(fee), "% Co-op Fee"])
 
-    class Meta:
-        ordering = ('order_date', 'customer')
+    def short_items(self):
+        shorts = []
+        for item in self.orderitem_set.all():
+            if item.qty_short():
+                shorts.append(item)
+        return shorts
+        
 
 class ShortOrderItems(object):
     def __init__(self, product, total_avail, total_ordered, quantity_short, order_items):
@@ -1126,7 +1136,22 @@ class OrderItem(models.Model):
     
     def total_ordered(self):
         return self.product.total_ordered(self.order.order_date)
-    
+
+    def qty_short(self):
+        avail = self.total_avail()
+        ordered = self.total_ordered()
+        if ordered > avail:
+            return ordered - avail
+        else:
+            return Decimal("0")
+
+    def short_adjusted_qty(self):
+        return self.quantity - self.qty_short()
+
+    def short_adjusted_extended_price(self):
+        answer = self.short_adjusted_qty() * self.unit_price
+        return answer.quantize(Decimal('.01'), rounding=ROUND_UP)
+  
     def producers(self):
         txs = self.inventorytransaction_set.all()
         producers = []
