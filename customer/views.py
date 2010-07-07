@@ -326,7 +326,7 @@ def new_order(request, cust_id, year, month, day, list_id=None):
 
             update_order(the_order, itemforms)
             return HttpResponseRedirect('/%s/%s/'
-               % ('customer/order_confirmation', the_order.id))
+               % ('customer/orderconfirmation', the_order.id))
     else:
         ordform = OrderForm(initial={'customer': customer, 'order_date': orderdate, })
         itemforms = create_order_item_forms(order, product_list, availdate, orderdate)
