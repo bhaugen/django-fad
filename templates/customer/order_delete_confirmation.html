@@ -20,7 +20,7 @@
 		<form style="display: inline;" action="{% url delete_order order_id=order.id %}" method="POST">
     			<input type="submit" value="Delete" />
 		</form>
-		<form style="display: inline;" action="{% url order_selection %}" method="GET">
+		<form style="display: inline;" action="{% url customer_order_selection %}" method="GET">
     			<input type="submit" value="Cancel" />
 		</form>
 	</div>
