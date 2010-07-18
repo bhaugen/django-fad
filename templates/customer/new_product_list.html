@@ -143,7 +143,7 @@
 		    <tr>
 			<th style="width: 20em; " >Category</th>
                 	<th style="width: 18em; " >Product</th>
-	                <th style="width: 10em; " >Default Qty</th>
+	                <th style="width: 7em; " >Default Qty</th>
         	        <th style="width: 30px; " >Plan</th>
                 	<th style="width: 30px; " >Add</th>
 		</tr>
@@ -155,15 +155,15 @@
 	<tbody>
 
 
-            {% for form in form_list %}
-                 <tr>
-					 <td class="read-only-td"  style="width: 20em; "  > {{ form.category }} </td>
-					<td class="read-only-td"  style="width: 18em; "  > {{ form.product_name }} </td>
-					<td style="width: 10em; " > {{ form.default_quantity }} </td>
-					<td style="width: 30px; " > {{ form.planned }} </td>
-					<td style="width: 30px; " > {{ form.added }} </td>
-					{{ form.product_id }}
-                </tr>
+		{% for form in form_list %}
+			{{ form.prod_id }}
+	                <tr>
+				<td class="read-only-td"  style="width: 20em; "  > {{ form.category }} </td>
+				<td class="read-only-td"  style="width: 18em; "  > {{ form.product_name }} </td>
+				<td style="width: 7em; text-align: center; " > {{ form.default_quantity }} </td>
+				<td style="width: 30px; " > {{ form.planned }} </td>
+				<td style="width: 30px; " > {{ form.added }} </td>
+			</tr>
 		{% endfor %} 
 	</tbody>
         </table>

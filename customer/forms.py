@@ -91,13 +91,25 @@ class ProductListForm(forms.ModelForm):
         exclude = ('member',)
 
 class CustomerProductForm(forms.ModelForm):
-    product_id = forms.CharField(widget=forms.HiddenInput)
-    added = forms.BooleanField(required=False,
-                               widget=forms.CheckboxInput(attrs={'class': 'added',}))
+    prod_id = forms.CharField(widget=forms.HiddenInput)
+    default_quantity = forms.DecimalField(required=False, widget=forms.TextInput(attrs={
+        'class': 'quantity-field', 
+        'size': '5',
+        'value': 0,
+     }))
+    added = forms.BooleanField(widget=forms.CheckboxInput(attrs={'class': 'added',}))
 
     class Meta:
         model = CustomerProduct
         exclude = ('customer', 'product', 'product_list')
+
+
+class InlineCustomerProductForm(forms.ModelForm):
+
+    class Meta:
+        model = CustomerProduct
+        exclude = ('customer', 'product_list')
+
 
 
 

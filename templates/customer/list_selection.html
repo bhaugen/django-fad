@@ -17,10 +17,19 @@
 		<input class="submit-btn" type="submit" value="Create new product list" />
 	</form>
 
+	{% if product_lists %}
+
 	<h4>Change existing list:</h4>
-	{% for product_list in product_lists %}
-	<a href="{% url edit_product_list list_id=product_list.id %}">{{ product_list.list_name }} - {{ product_list.description }}</a>
-	{% endfor %}
+	<ul>
+		{% for product_list in product_lists %}
+			<li>
+				<a href="{% url edit_product_list list_id=product_list.id %}">
+				{{ product_list.list_name }} - {{ product_list.description }}
+				</a>
+			</li>
+		{% endfor %}
+
+	{% endif %}
 
 
 </div>

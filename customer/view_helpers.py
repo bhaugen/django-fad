@@ -13,9 +13,13 @@ def create_new_product_list_forms(data=None):
         prod.parents = prod.parent_string()
     products.sort(lambda x, y: cmp(x.parents, y.parents))
     for prod in products:
-        form = CustomerProductForm(data, prefix=prod.id, initial={
-            'prod_id': prod.id, 
-        })
+        #if prod.id == 24:
+        #    import pdb; pdb.set_trace()
+        initial_data = {
+                'prod_id': prod.id,
+            }
+        form = CustomerProductForm(data, prefix=prod.id, 
+            initial=initial_data)
         form.product_name = prod.long_name
         form.category = prod.parents
         form_list.append(form)

@@ -13,11 +13,11 @@
 ul#tabnav 
 { /* general settings */
 	text-align: left; /* set to left, right or center */
-	margin: 1em 0 2em 0; /* set margins as desired */
+	margin: 8px 0 16px 0; /* set margins as desired */
 	font: bold 11px verdana, arial, sans-serif; /* set font as desired */
 	border-bottom: 1px solid #006699; /* set border COLOR as desired */
 	list-style-type: none;
-	padding: 1px 10px 3px 10px; /* THIRD number must change with respect to padding-top (X) below */
+	padding: 1px 10px 2px 10px; /* THIRD number must change with respect to padding-top (X) below */
 }
 
 ul#tabnav li 
@@ -25,16 +25,40 @@ ul#tabnav li
 display: inline;
 }
 
-div.dashboard li.dashboard, div.inventory-update li.inventory-update, div.order-update li.order-update, div.order-table li.order-table, div.delivery-update li.delivery-update, div.deliveries li.deliveries, div.producer-payments li.producer-payments, div.payment-update li.payment-update, div.invoices li.invoices, div.help li.help, div.plan-update li.plan-update, div.statements li.statements, div.process li.process
+div.dashboard li.dashboard, 
+div.inventory-update li.inventory-update, 
+div.order-update li.order-update, 
+div.order-table li.order-table, 
+div.delivery-update li.delivery-update, 
+div.deliveries li.deliveries, 
+div.producer-payments li.producer-payments, 
+div.payment-update li.payment-update, 
+div.invoices li.invoices, 
+div.help li.help, 
+div.plan-update li.plan-update, 
+div.statements li.statements, 
+div.process li.process
 { /* settings for selected tab */
-	border-bottom: 1px solid #fff; /* set border color to page background color */
-	background-color: #fff !important; /* set background color to match above border color */
+	border-bottom: 1px solid #ffffff; /* set border color to page background color */
+	background-color: #ffffff !important; /* set background color to match above border color */
 }
 
-div.dashboard li.dashboard a, div.inventory-update li.inventory-update a, div.order-update li.order-update a, div.order-table li.order-table a, div.delivery-update li.delivery-update a, div.deliveries li.deliveries a, div.producer-payments li.producer-payments a, div.payment-update li.payment-update a, div.invoices li.invoices a, div.help li.help a, div.plan-update li.plan-update a, div.statements li.statements a, div.process li.process a
+div.dashboard li.dashboard a, 
+div.inventory-update li.inventory-update a, 
+div.order-update li.order-update a, 
+div.order-table li.order-table a, 
+div.delivery-update li.delivery-update a, 
+div.deliveries li.deliveries a, 
+div.producer-payments li.producer-payments a, 
+div.payment-update li.payment-update a, 
+div.invoices li.invoices a, 
+div.help li.help a, 
+div.plan-update li.plan-update a, 
+div.statements li.statements a, 
+div.process li.process a
 { /* settings for selected tab link */
-	background-color: #fff  !important; /* set selected tab background color as desired */
-	color: #000; /* set selected tab link color as desired */
+	background-color: #ffffff  !important; /* set selected tab background color as desired */
+	color: #000000; /* set selected tab link color as desired */
 	position: relative;
 	top: 1px;
 	padding-top: 4px; /* must change with respect to padding (X) above and below */
@@ -66,8 +90,10 @@ ul#tabnav a:hover
 		<li class="process" ><a title="Create or update processes" href="/distribution/processselection">Process</a></li>
 		<li class="order-update" ><a title="Update orders for one customer at a time" href="/distribution/orderselection">Order</a> </li>
 		<li class="order-table" ><a title="Show all orders for all customers for this week" href="/distribution/ordertableselection">Orders</a> </li>
-        {% food_network %}{% if not food_network.order_by_lot %}
-			<li class="delivery-update" ><a title="Update lots for all order items for this week" href="/distribution/deliveryselection">Update Lots</a> </li>
+        	{% food_network %}{% if not food_network.order_by_lot %}
+			<li class="delivery-update" >
+				<a title="Update lots for all order items for this week" href="/distribution/deliveryselection">Update Lots</a> 
+			</li>
 		{% endif %}
 		<li class="invoices" ><a title="Print invoices for all orders for this week" href="/distribution/invoiceselection">Invoices</a> </li>
 		<li class="producer-payments" ><a title="Show payments due to producers this week" href="/distribution/producerpaymentselection">Payment Table</a> </li>

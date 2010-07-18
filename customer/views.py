@@ -116,6 +116,28 @@ def new_product_list(request, cust_id):
     customer = get_object_or_404(Party, pk=cust_id)
     list_form = ProductListForm(data=request.POST or None)
     form_list = create_new_product_list_forms(data=request.POST or None)
+    if request.method == "POST":
+        if list_form.is_valid():
+            list_data = list_form.cleaned_data
+            plist = list_form.save(commit=False)
+            plist.member = customer
+            plist.save()
+            for form in form_list:
+                #import pdb; pdb.set_trace()
+                if form.is_valid():
+                    data = form.cleaned_data
+                    added = data["added"]
+                    if added:
+                        product_id = data["prod_id"]
+                        product = Product.objects.get(id=product_id)
+                        cp =  form.save(commit=False)
+                        cp.customer = customer
+                        cp.product=product
+                        cp.product_list = plist
+                        cp.save()
+            return HttpResponseRedirect('/%s/'
+               % ('customer/listselection', ))
+
     return render_to_response('customer/new_product_list.html', 
         {'customer': customer,
          'list_form': list_form,
@@ -128,8 +150,21 @@ def edit_product_list(request, list_id):
     plist = get_object_or_404(MemberProductList, pk=list_id)
     list_form = ProductListForm(data=request.POST or None, instance=plist)
     ProductListInlineFormSet = inlineformset_factory(
-        MemberProductList, CustomerProduct)
-    formset = ProductListInlineFormSet(instance=plist)
+        MemberProductList, CustomerProduct, form=InlineCustomerProductForm)
+    formset = ProductListInlineFormSet(data=request.POST or None, instance=plist)
+    if request.method == "POST":
+        #import pdb; pdb.set_trace()
+        if list_form.is_valid():
+            list_data = list_form.cleaned_data
+            list_form.save()
+            if formset.is_valid():
+                saved_cps = formset.save(commit=False)
+                for cp in saved_cps:
+                    cp.customer = plist.member
+                    cp.save()
+            return HttpResponseRedirect('/%s/'
+               % ('customer/listselection', ))
+
     return render_to_response('customer/edit_product_list.html', 
         {'customer': plist.member,
          'list_form': list_form,

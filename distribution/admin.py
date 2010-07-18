@@ -65,7 +65,7 @@ admin.site.register(ProducerProduct, ProducerProductAdmin)
 class CustomerProductAdmin(admin.ModelAdmin):
     list_display = ('customer', 'product', 'default_quantity',
                      'planned', 'product_list')
-    list_filter = ['customer', 'product']
+    list_filter = ['product_list', 'customer', 'product']
     
 admin.site.register(CustomerProduct, CustomerProductAdmin)
 
