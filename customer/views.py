@@ -20,6 +20,7 @@ from django.forms.models import inlineformset_factory
 from distribution.models import *
 from customer.forms import *
 from customer.view_helpers import *
+from distribution.forms import DateRangeSelectionForm
 from distribution.view_helpers import plan_weeks, create_weekly_plan_forms
 
 try:
@@ -575,4 +576,67 @@ def order_update(request, orderdate, customer, order=None):
         {'customer': customer, 'order': order, 'order_date': orderdate, 'avail_date': availdate, 'order_form': ordform, 'item_forms': itemforms})
 
 
+@login_required
+def invoice_selection(request):
+    init = {"order_date": current_week(),}
+    customer = request.user.parties.all()[0].party
+    if request.method == "POST":
+        drform = DateRangeSelectionForm(request.POST)  
+        if drform.is_valid():
+            dsdata = drform.cleaned_data
+            from_date = dsdata['from_date'].strftime('%Y_%m_%d')
+            to_date = dsdata['to_date'].strftime('%Y_%m_%d')
+            return HttpResponseRedirect('/%s/%s/%s/%s/'
+               % ('customer/invoices', customer.id, from_date, to_date))
+    else:
+        unpaid_invoices = Order.objects.filter(
+            customer=customer,
+            state="Delivered")
+        to_date = datetime.date.today()
+        from_date = to_date - datetime.timedelta(weeks=16)
+        init = {
+            'from_date': from_date,
+            'to_date': to_date,
+        }
+        drform = DateRangeSelectionForm(initial=init)
+    return render_to_response('customer/invoice_selection.html', {
+        'date_range_form': drform,
+        'unpaid_invoices': unpaid_invoices,
+    })
 
+
+@login_required
+def invoices(request, cust_id, from_date, to_date):
+    try:
+        from_date = datetime.datetime(*time.strptime(from_date, '%Y_%m_%d')[0:5]).date()
+        to_date = datetime.datetime(*time.strptime(to_date, '%Y_%m_%d')[0:5]).date()
+    except ValueError:
+            raise Http404
+
+    try:
+        fn = FoodNetwork.objects.get(pk=1)
+    except FoodNetwork.DoesNotExist:
+        return render_to_response('distribution/network_error.html')
+    cust_id = int(cust_id)
+    if cust_id:
+        try:
+            customer = Customer.objects.get(pk=cust_id)
+        except Customer.DoesNotExist:
+            raise Http404
+    else:
+        raise Http404
+    #todo: shd include only unpaid but delivered orders?
+    orders = Order.objects.filter(
+        customer=customer, 
+        order_date__range=(from_date, to_date),
+        state__contains="Delivered"
+    )
+    return render_to_response('distribution/invoices.html', {
+        'orders': orders, 
+        'network': fn,
+        'tabnav': "customer/customer_tabnav.html",
+    })
+
+def unpaid_invoice(request, order_id):
+    order = get_object_or_404(Order, pk=order_id)
+    return render_to_response('customer/order.html', {'order': order})

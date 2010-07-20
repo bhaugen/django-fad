@@ -273,7 +273,6 @@ class DateRangeSelectionForm(forms.Form):
         widget=forms.TextInput(attrs={"dojoType": "dijit.form.DateTextBox", "constraints": "{datePattern:'yyyy-MM-dd'}"}))
 
 
-
 class PlanSelectionForm(forms.Form):
     member = forms.ChoiceField()
     plan_from_date = forms.DateField(
@@ -591,9 +590,13 @@ def create_delivery_forms(thisdate, customer, data=None):
     # might be doable...
     form_list = []
     if customer:
-        orderitems = OrderItem.objects.filter(order__order_date=thisdate, order__customer=customer)
+        orderitems = OrderItem.objects.filter(
+            order__order_date=thisdate, 
+            order__customer=customer
+        ).exclude(order__state="Unsubmitted")
     else:
-        orderitems = OrderItem.objects.filter(order__order_date=thisdate)
+        orderitems = OrderItem.objects.filter(
+            order__order_date=thisdate).exclude(order__state="Unsubmitted")
     for oi in orderitems:
         dtf = DeliveryItemForm(data, prefix=str(oi.id), initial=
             {'order_qty': oi.quantity, 'order_item_id': oi.id, 'product_id': oi.product.id})

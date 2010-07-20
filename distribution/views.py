@@ -887,12 +887,12 @@ def delivery_update(request, cust_id, year, month, day):
 
 
 def order_headings_by_product(thisdate, links=True):
-    orders = Order.objects.filter(order_date=thisdate)
+    orders = Order.objects.filter(order_date=thisdate).exclude(state='Unsubmitted')
     heading_list = []
     for order in orders:
         lines = []
         if links:
-            lines.append("<a href='/order/" + str(order.id) + "/'>" + order.customer.short_name + "</a>")
+            lines.append("<a href='/distribution/order/" + str(order.id) + "/'>" + order.customer.short_name + "</a>")
         else:
             lines.append(order.customer.short_name)
         lines.append(order.customer.contact)
@@ -903,11 +903,17 @@ def order_headings_by_product(thisdate, links=True):
 
 
 def order_item_rows_by_product(thisdate):
-    orders = Order.objects.filter(order_date=thisdate)
-    cust_list = []
+    orders = Order.objects.filter(order_date=thisdate).exclude(state='Unsubmitted')
+    if not orders:
+        return []
+    #cust_list = []
+    #for order in orders:
+    #    cust_list.append(order.customer.short_name)
+    #cust_count = len(cust_list)
+    order_list = []
     for order in orders:
-        cust_list.append(order.customer.short_name)
-    cust_count = len(cust_list)
+        order_list.append(order.id)
+    order_count = len(order_list)
     prods = Product.objects.all()
     product_dict = {}
     for prod in prods:
@@ -916,18 +922,20 @@ def order_item_rows_by_product(thisdate):
         if totordered > 0:
             producers = prod.avail_producers(thisdate)
             product_dict[prod.short_name] = [prod.parent_string(), prod.long_name, producers, totavail, totordered]
-            for x in range(cust_count):
+            for x in range(order_count):
                 product_dict[prod.short_name].append(' ')
     items = OrderItem.objects.filter(order__order_date=thisdate)
     for item in items:
-        prod_cell = cust_list.index(item.order.customer.short_name) + 5
+        prod_cell = order_list.index(item.order.id) + 5
         product_dict[item.product.short_name][prod_cell] = item.quantity
     item_list = product_dict.values()
     item_list.sort()
     return item_list
 
 def order_item_rows(thisdate):
-    orders = Order.objects.filter(order_date=thisdate)
+    orders = Order.objects.filter(order_date=thisdate).exclude(state='Unsubmitted')
+    if not orders:
+        return []
     cust_list = []
     for order in orders:
         cust_list.append(order.customer.id)
@@ -1965,11 +1973,23 @@ def invoices(request, cust_id, year, month, day):
             raise Http404
     else:
         customer = ''
+    #todo: shd include only unpaid but delivered orders?
     if customer:
-        orders = Order.objects.filter(customer=customer, order_date=thisdate)
+        orders = Order.objects.filter(
+            customer=customer, 
+            order_date=thisdate,
+            state__contains="Delivered"
+        )
     else:
-        orders = Order.objects.filter(order_date=thisdate)
-    return render_to_response('distribution/invoices.html', {'orders': orders, 'network': fn,})
+        orders = Order.objects.filter(
+            order_date=thisdate,
+            state__contains="Delivered"
+        )
+    return render_to_response('distribution/invoices.html', {
+        'orders': orders, 
+        'network': fn,
+        'tabnav': "distribution/tabnav.html",
+    })
 
 def advance_dates():
     orders = list(Order.objects.all())

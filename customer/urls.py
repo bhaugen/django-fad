@@ -29,6 +29,12 @@ urlpatterns = patterns('',
         "customer.views.new_product_list", name="create_product_list"),
     url(r'^editproductlist/(?P<list_id>\d+)/$',
         "customer.views.edit_product_list", name="edit_product_list"),
+    url(r'^invoiceselection/$', "customer.views.invoice_selection",
+        name="customer_invoice_selection"),
+    url(r'^invoices/(?P<cust_id>\d+)/(?P<from_date>\w{10})/(?P<to_date>\w{10})/$',
+        "customer.views.invoices", name="customer_invoices"),
+     url(r'^unpaidinvoice/(?P<order_id>\d+)/$', "customer.views.unpaid_invoice",
+         name="unpaid_invoice"),
 
 )
 

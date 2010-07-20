@@ -25,13 +25,25 @@ ul#tabnav li
 display: inline;
 }
 
-div.customer-dashboard li.customer-dashboard, div.order li.order, div.history li.history, div.plans li.plans, div.help li.help, div.product-lists li.product-lists
+div.customer-dashboard li.customer-dashboard, 
+div.order li.order,
+div.invoices li.invoices,
+div.history li.history, 
+div.plans li.plans, 
+div.help li.help, 
+div.product-lists li.product-lists
 { /* settings for selected tab */
 	border-bottom: 1px solid #fff; /* set border color to page background color */
 	background-color: #fff !important; /* set background color to match above border color */
 }
 
-div.customer-dashboard li.customer-dashboard a, div.order li.order a, div.history li.history a, div.plans li.plans a, div.help li.help a, div.product-lists li.product-lists a
+div.customer-dashboard li.customer-dashboard a, 
+div.order li.order a,
+div.invoices li.invoices a,
+div.history li.history a, 
+div.plans li.plans a, 
+div.help li.help a, 
+div.product-lists li.product-lists a
 { /* settings for selected tab link */
 	background-color: #fff  !important; /* set selected tab background color as desired */
 	color: #000; /* set selected tab link color as desired */
@@ -65,6 +77,7 @@ ul#tabnav a:hover
 		<li class="customer-dashboard" ><a title="Home page" href="/customer/customerdashboard">Dashboard</a> </li>
 		<li class="order" ><a title="Create or update orders" href="/customer/orderselection">Order</a></li>
 		<li class="product-lists" ><a title="Create or update product lists" href="/customer/listselection">Product Lists</a></li>
+		<li class="invoices" ><a title="View or pay invoices" href="/customer/invoiceselection">Invoices</a></li>
 		<li class="history" ><a title="Update orders for one customer at a time" href="/customer/historyselection">History</a> </li>
 		<li class="plans" ><a title="Show all orders for all customers for this week" href="/customer/planselection">Plans</a> </li>
 		<li class="help" ><a title="Food Distribution System documentation" href="customer/help">Help</a> </li>

@@ -33,14 +33,14 @@
 		{% endfor %}
 
 	</table>
-
-	<div style="margin: 1em; " >
-		<form action="{% url send_short_change_notices %}" method="POST">
-			<input class="submit-btn" type="submit" value="Send Short Change Emails" />
-			<input type="hidden" name="next" value="{% url dashboard %}" />
-		</form>
-	</div>
-
+	{% if changed_items %}
+		<div style="margin: 1em; " >
+			<form action="{% url send_short_change_notices %}" method="POST">
+				<input class="submit-btn" type="submit" value="Send Short Change Emails" />
+				<input type="hidden" name="next" value="{% url dashboard %}" />
+			</form>
+		</div>
+	{% endif %}
 
 </div>
 {% endblock %} 

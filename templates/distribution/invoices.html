@@ -12,7 +12,7 @@
 
 <div class="invoices">
 	
-	{% include "distribution/tabnav.html" %}
+	{% include tabnav %}
 
 	{% for order in orders %}
 	<div style="page-break-after: always; page-break-inside: avoid; width: 7in; " >
@@ -28,7 +28,7 @@
 				</td>
 				<td>
 					<h3 style="text-align: right; " >Invoice</h3>
-					<table class="ga-event-table" style="width: 100%; " >
+					<table class="ga-event-table" style="font-size: 100%; width: 100%; " >
 						<tr>
 							<th>Date</th>
 							<th>Invoice#</th>				
@@ -50,7 +50,7 @@
 			</tr>
 		</table>
 		
-		<table class="ga-event-table" style="page-break-before: avoid; page-break-after: avoid; margin-bottom: 3em; " >
+		<table class="ga-event-table" style="font-size: 100%; page-break-before: avoid; page-break-after: avoid; margin-bottom: 3em; " >
 			<tr>
 				<th>Bill To: </th>
 			</tr>
@@ -69,7 +69,7 @@
 			</tr>
 		</table>
 						
-		<table class="ga-event-table" style="page-break-before: avoid; page-break-after: avoid; width: 100%; " >
+		<table class="ga-event-table" style="font-size: 100%; page-break-before: avoid; page-break-after: avoid; width: 100%; " >
 			<tr>
 				 <th style="width: 40%; ">Item</th>
 				 <th>Producer</th>

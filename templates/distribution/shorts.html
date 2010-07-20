@@ -236,10 +236,11 @@
 		{% endfor %}
 
 	</table>
-
-	<p>
-            <input type="submit" value="Submit Short Changes" />
-        </p>
+	{% if shorts_table.rows %}
+		<p>
+        		<input type="submit" value="Submit Short Changes" />
+		</p>
+	{% endif %}
 	</form>
 
 

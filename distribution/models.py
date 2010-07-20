@@ -986,7 +986,9 @@ class Payment(EconomicEvent):
 
 
 class TransactionPayment(models.Model):
-    """ In REA terms, this is a Duality
+    """ Payment to Producer or Service provider
+        for an EconomicEvent.
+        In REA terms, this is a Duality
         but always assuming money in payment.
     """
     paid_event = models.ForeignKey(EconomicEvent, related_name="transaction_payments")
@@ -1028,12 +1030,36 @@ class Order(models.Model):
         super(Order, self).delete()
 
     def is_paid(self):
+        #todo: what about partials?
         if self.paid:
             return True
-        if state == "Paid" or state == "Paid-Delivered" or state == "Delivered-Paid":
+        if self.state == "Paid" or self.state == "Paid-Delivered" or self.state == "Delivered-Paid":
             return True
         return False
     
+    def is_delivered(self):
+        #todo: what about partials?
+        if self.state == "Delivered" or self.state == "Paid-Delivered" or self.state == "Delivered-Paid":
+            return True
+        return False
+
+    def register_delivery(self):
+        if self.state.find("Delivered") < 0:
+            #print "registering delivery for order", self
+            if self.state == "Paid":
+                self.state = "Paid-Delivered"
+            else:
+                self.state = "Delivered"
+            self.save()
+
+    def register_customer_payment(self):
+        if self.state.find("Paid") < 0:
+            if self.state == "Delivered":
+                self.state = "Delivered-Paid"
+            else:
+                self.state = "Paid"
+            self.save()
+
     def charge_name(self):
         return charge_name()
     
@@ -1081,6 +1107,20 @@ class Order(models.Model):
             if item.qty_short():
                 shorts.append(item)
         return shorts
+
+
+#todo: implement this class for order payments
+# and replace order.paid field with a method
+class CustomerPayment(models.Model):
+    """ Payment from a Customer to FoodNetwork
+        for a delivered Order.
+        In REA terms, this is a Duality
+        where the Order is a bundle of EconomicEvents
+        and assuming money in payment.
+    """
+    paid_order = models.ForeignKey(Order, related_name="customer_payments")
+    payment = models.ForeignKey(Payment, related_name="paid_orders")
+    amount_paid = models.DecimalField(max_digits=8, decimal_places=2)
         
 
 class ShortOrderItems(object):
@@ -1095,7 +1135,8 @@ class ShortOrderItems(object):
 def shorts_for_date(order_date):
     shorts = []
     maybes = {}
-    for oi in OrderItem.objects.filter(order__order_date=order_date):
+    ois = OrderItem.objects.filter(order__order_date=order_date).exclude(order__state="Unsubmitted")
+    for oi in ois:
         if not oi.product in maybes:
             maybes[oi.product] = ShortOrderItems(oi.product, 
                 oi.product.total_avail(order_date), Decimal("0"), Decimal("0"), [])
@@ -1444,6 +1485,9 @@ class InventoryTransaction(EconomicEvent):
             self.inventory_item.update_from_transaction(qty_delta)
         else:
             self.inventory_item.update_from_transaction(-qty_delta)
+        if self.order_item:
+            if self.transaction_type=="Delivery":
+                self.order_item.order.register_delivery()
         
     def delete(self):
         #todo: admin deletes do not call this delete method
