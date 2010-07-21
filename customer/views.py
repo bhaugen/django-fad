@@ -75,9 +75,26 @@ def list_selection(request):
 def history_selection(request):
     food_network = FoodNetwork.objects.get(pk=1)
     customer = request.user.parties.all()[0].party
+    if request.method == "POST":
+        drform = DateRangeSelectionForm(request.POST)  
+        if drform.is_valid():
+            dsdata = drform.cleaned_data
+            from_date = dsdata['from_date'].strftime('%Y_%m_%d')
+            to_date = dsdata['to_date'].strftime('%Y_%m_%d')
+            return HttpResponseRedirect('/%s/%s/%s/%s/'
+               % ('customer/history', customer.id, from_date, to_date))
+    else:
+        to_date = datetime.date.today()
+        from_date = to_date - datetime.timedelta(weeks=16)
+        init = {
+            'from_date': from_date,
+            'to_date': to_date,
+        }
+        drform = DateRangeSelectionForm(initial=init)
     return render_to_response('customer/history_selection.html', 
         {'customer': customer,
          'food_network': food_network,
+         'date_range_form': drform,
          }, context_instance=RequestContext(request))
 
 def plan_selection(request):
@@ -625,11 +642,10 @@ def invoices(request, cust_id, from_date, to_date):
             raise Http404
     else:
         raise Http404
-    #todo: shd include only unpaid but delivered orders?
     orders = Order.objects.filter(
         customer=customer, 
         order_date__range=(from_date, to_date),
-        state__contains="Delivered"
+        state__contains="Paid"
     )
     return render_to_response('distribution/invoices.html', {
         'orders': orders, 
@@ -639,4 +655,42 @@ def invoices(request, cust_id, from_date, to_date):
 
 def unpaid_invoice(request, order_id):
     order = get_object_or_404(Order, pk=order_id)
-    return render_to_response('customer/order.html', {'order': order})
+    try:
+        fn = FoodNetwork.objects.get(pk=1)
+    except FoodNetwork.DoesNotExist:
+        return render_to_response('distribution/network_error.html')
+
+    return render_to_response('customer/unpaid_invoice.html', {
+        'order': order,
+        'network': fn,
+    })
+
+@login_required
+def history(request, cust_id, from_date, to_date):
+    try:
+        from_date = datetime.datetime(*time.strptime(from_date, '%Y_%m_%d')[0:5]).date()
+        to_date = datetime.datetime(*time.strptime(to_date, '%Y_%m_%d')[0:5]).date()
+    except ValueError:
+            raise Http404
+
+    try:
+        fn = FoodNetwork.objects.get(pk=1)
+    except FoodNetwork.DoesNotExist:
+        return render_to_response('distribution/network_error.html')
+    cust_id = int(cust_id)
+    if cust_id:
+        try:
+            customer = Customer.objects.get(pk=cust_id)
+        except Customer.DoesNotExist:
+            raise Http404
+    else:
+        raise Http404
+    history_rows = create_history_table(customer, from_date, to_date)
+    return render_to_response('customer/history.html', {
+        'history_rows': history_rows,
+        'from_date': from_date,
+        'to_date': to_date,
+        'network': fn,
+        'tabnav': "customer/customer_tabnav.html",
+    })
+

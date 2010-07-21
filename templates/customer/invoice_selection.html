@@ -34,7 +34,7 @@
 				<a href="{% url unpaid_invoice order_id=order.id %}">
 					#{{ order.id }} {{ order.order_date }} ${{ order.total_price }}
 				</a>&nbsp;&nbsp; 
-				<a href="{% url edit_order order_id=order.id %}">Pay now</a>
+				<button>Pay Now</button>
 			</li>
 
 		{% endfor %}

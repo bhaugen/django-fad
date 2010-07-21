@@ -101,3 +101,35 @@ def create_order_item_forms(order, product_list, availdate, orderdate, data=None
                 form_list.append(oiform)
     return form_list
 
+class DisplayTable(object):
+    def __init__(self, columns, rows):
+        self.columns = columns
+        self.rows = rows
+
+
+class HistoryRow(object):
+    def __init__(self, product, quantity, extended_price):
+        self.product = product
+        self.quantity = quantity
+        self.extended_price = extended_price
+
+    def average_price(self):
+        return self.extended_price / self.quantity
+
+
+def create_history_table(customer, from_date, to_date):
+    items = OrderItem.objects.filter(
+        order__customer=customer, 
+        order__order_date__range=(from_date, to_date),
+        order__state__contains="Paid"
+    )
+    row_dict = {}
+    for item in items:
+        row_dict.setdefault(item.product, HistoryRow(item.product, Decimal("0"),
+                                                     Decimal("0")))
+        row = row_dict[item.product]
+        row.quantity += item.quantity
+        row.extended_price += item.extended_price()
+    rows = row_dict.values()
+    rows.sort(lambda x, y: cmp(x.product.short_name, y.product.short_name))
+    return rows

@@ -85,7 +85,7 @@ def supply_demand_table(from_date, to_date, member=None):
         columns.append(wkdate)
         wkdate = wkdate + datetime.timedelta(days=7)
     rows = rows.values()
-    rows.sort(lambda x, y: cmp(x[0].long_name, y[0].short_name))
+    rows.sort(lambda x, y: cmp(x[0].short_name, y[0].short_name))
     sdtable = SupplyDemandTable(columns, rows)
     return sdtable
 
