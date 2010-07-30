@@ -881,6 +881,11 @@ class EconomicEventManager(models.Manager):
                 payments.append(event)
         return payments
 
+    def payments_to_members(self):
+        fn = FoodNetwork.objects.get(pk=1)
+        payments = Payment.objects.all().exclude(to_whom=fn)
+        return payments
+
 class EconomicEvent(models.Model):
     transaction_date = models.DateField()
     from_whom = models.ForeignKey(Party, related_name="given_events")
@@ -1532,7 +1537,7 @@ class InventoryTransaction(EconomicEvent):
                 return False
         else:
             if self.order_item:
-                return self.order_item.order.paid
+                return self.order_item.order.is_paid()
             else:
                 return False
 
@@ -1589,7 +1594,7 @@ class ServiceTransaction(EconomicEvent):
         # todo: shd be recursive for next processes?
         for output in self.process.outputs():
             for delivery in output.inventory_item.deliveries():
-                if delivery.order_item.order.paid:
+                if delivery.order_item.order.is_paid():
                     return True
         return False
 
@@ -1666,10 +1671,10 @@ class TransportationTransaction(EconomicEvent):
     def should_be_paid(self):
         if self.is_paid():
             return False
-        return self.order.paid
+        return self.order.is_paid()
 
     def is_due(self):
-        return self.order.paid
+        return self.order.is_paid()
 
     def due_to_member(self):
         return self.amount.quantize(Decimal('.01'), rounding=ROUND_UP)

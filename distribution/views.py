@@ -132,6 +132,23 @@ def json_producer_info(request, producer_id):
 
 #@login_required
 def plan_selection(request):
+    #import pdb; pdb.set_trace()
+    from_date = datetime.date.today()
+    # force from_date to Monday, to_date to Sunday
+    from_date = from_date - datetime.timedelta(days=datetime.date.weekday(from_date))
+    to_date = from_date + datetime.timedelta(weeks=16)
+    to_date = to_date - datetime.timedelta(days=datetime.date.weekday(to_date)+1)
+    to_date = to_date + datetime.timedelta(days=7)
+    plan_init = {
+        'plan_from_date': from_date,
+        'plan_to_date': to_date,
+        'list_type': 'M',
+    }
+    init = {
+        'from_date': from_date,
+        'to_date': to_date,
+    }
+
     if request.method == "POST":
         if request.POST.get('submit-supply-demand'):
             sdform = DateRangeSelectionForm(prefix='sd', data=request.POST)  
@@ -141,6 +158,9 @@ def plan_selection(request):
                 to_date = data['to_date'].strftime('%Y_%m_%d')
                 return HttpResponseRedirect('/%s/%s/%s/'
                     % ('distribution/supplydemand', from_date, to_date))
+            else:
+                psform = PlanSelectionForm(initial=plan_init)
+                income_form = DateRangeSelectionForm(prefix = 'inc', initial=init)
 
         elif request.POST.get('submit-income'):
             income_form = DateRangeSelectionForm(prefix='inc', data=request.POST)  
@@ -150,7 +170,10 @@ def plan_selection(request):
                 to_date = data['to_date'].strftime('%Y_%m_%d')
                 return HttpResponseRedirect('/%s/%s/%s/'
                     % ('distribution/income', from_date, to_date))
-        
+            else:
+                psform = PlanSelectionForm(initial=plan_init)
+                sdform = DateRangeSelectionForm(prefix='sd', initial=init)
+      
         else:
             psform = PlanSelectionForm(request.POST)  
             if psform.is_valid():
@@ -161,25 +184,11 @@ def plan_selection(request):
                 list_type = psdata['list_type']
                 return HttpResponseRedirect('/%s/%s/%s/%s/%s/'
                    % ('distribution/planningtable', member_id, list_type, from_date, to_date))
+            else:
+                sdform = DateRangeSelectionForm(prefix='sd', initial=init)
+                income_form = DateRangeSelectionForm(prefix = 'inc', initial=init)
 
-                #return HttpResponseRedirect('/%s/%s/'
-                #   % ('planupdate', member_id))
     else:
-        from_date = datetime.date.today()
-        # force from_date to Monday, to_date to Sunday
-        from_date = from_date - datetime.timedelta(days=datetime.date.weekday(from_date))
-        to_date = from_date + datetime.timedelta(weeks=16)
-        to_date = to_date - datetime.timedelta(days=datetime.date.weekday(to_date)+1)
-        to_date = to_date + datetime.timedelta(days=7)
-        plan_init = {
-            'plan_from_date': from_date,
-            'plan_to_date': to_date,
-            'list_type': 'M',
-        }
-        init = {
-            'from_date': from_date,
-            'to_date': to_date,
-        }
         psform = PlanSelectionForm(initial=plan_init)
         sdform = DateRangeSelectionForm(prefix='sd', initial=init)
         income_form = DateRangeSelectionForm(prefix = 'inc', initial=init)
@@ -1392,7 +1401,9 @@ def statements(request, from_date, to_date):
     except FoodNetwork.DoesNotExist:
         raise Http404
     
-    payments = Payment.objects.filter(transaction_date__gte=from_date, transaction_date__lte=to_date)
+    payments = Payment.objects.filter(
+        transaction_date__gte=from_date, 
+        transaction_date__lte=to_date).exclude(to_whom=network)
     return render_to_response('distribution/statements.html', 
               {'payments': payments, 'network': network, })   
 

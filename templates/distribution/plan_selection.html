@@ -67,15 +67,15 @@
 		<form action="." method="POST" >
         		<table>
 		            <tr>
-                		<th style="text-align: right; " >Member:</th>
+                		<th style="text-align: right; vertical-align: top; " >Member:</th>
                 		<td>
 					{{ plan_form.member }}
-				</td>
-				{% if plan_form.member.errors %}
-					<td style="color: red; " >
+					{% if plan_form.member.errors %}
+					<span style="color: red; " >
 						{{ plan_form.member.errors }}
-					</td>
-				{% endif %}
+					</span>
+					{% endif %}
+				</td>
 		            </tr>
 		            <tr>
                 		<th style="text-align: right; " >Contact:</th>
@@ -89,23 +89,23 @@
                 		<th style="text-align: right; " >From Date:</th>
                 		<td>
 					{{ plan_form.plan_from_date }}
-				</td>
-				{% if plan_form.plan_from_date.errors %}
-					<td style="color: red; " >
+					{% if plan_form.plan_from_date.errors %}
+					<span style="color: red; " >
 						{{plan_form.plan_from_date.errors }}
-					</td>
-				{% endif %}
+					</span>
+					{% endif %}
+				</td>
 				</tr>
 				<tr>
                 		<th style="text-align: right; " >To Date:</th>
                 		<td>
 					{{ plan_form.plan_to_date }}
-				</td>
-				{% if plan_form.plan_to_date.errors %}
-					<td style="color: red; " >
+					{% if plan_form.plan_to_date.errors %}
+					<span style="color: red; " >
 						{{plan_form.plan_to_date.errors }}
-					</td>
-				{% endif %}
+					</span>
+					{% endif %}
+				</td>
 			</tr>
 			<tr>
 				<th style="text-align: right; " >Product List:</th>

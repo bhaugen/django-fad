@@ -131,7 +131,7 @@
 					totalAmount += due;
 				}
 			}
-			dojo.byId('id_amount').value = totalAmount;
+			dojo.byId('id_amount').value = totalAmount.toFixed(2);
 		}
 
 		function paidChanged(evt)

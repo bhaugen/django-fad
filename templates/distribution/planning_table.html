@@ -127,13 +127,13 @@ table thead
 	</p>
 
 	<form action="." method="POST" >
-	<input type="submit" value="Submit" />
-	<table class="ga-event-table" >
+	<input style="margin-bottom: 4px;" type="submit" value="Submit" />
+	<table class="ga-event-table" style="font-size: 90%;" >
 		<thead>
 			<tr>
 				{% for column in plan_table.columns %}
 					{% if forloop.first %}
-						<th style="text-align: right; width: 13em; " >{{ column }}</th>
+						<th style="text-align: right; width: 104px; " >{{ column }}</th>
 					{% else %}
 					<th style="width: 4em; " >{{ column|date:"n-j" }}</th>
 					{% endif %}
@@ -142,12 +142,12 @@ table thead
 		</thead>
 	</table>
 	<br />
-	<table class="ga-event-table" >
+	<table class="ga-event-table" style="font-size: 90%;" >
 
 		<tbody>
 			{% for row in forms %}
 			<tr>
-				<th style="text-align: right; width: 13em; " >{{ row.product }}</th>
+				<th style="text-align: right; width: 104px; " >{{ row.product }}</th>
 				{{ row.formset.management_form }}
 				{% for cell in row.formset.forms %}
 					<td style="width: 4em; " >{{ cell.quantity }}</td>
@@ -161,7 +161,7 @@ table thead
 		</tbody>
 
 	</table>
-	<input type="submit" value="Submit" />
+	<input style="margin-top: 4px;" type="submit" value="Submit" />
 	</form>
 
 </div>

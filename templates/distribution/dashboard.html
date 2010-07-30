@@ -25,10 +25,13 @@
 
 	{% include "distribution/tabnav.html" %}
 
+	<div  style="margin-left: 1em;" .
+
 	{% if food_network_name %}
 
-		<h3>{{ food_network_name }} Distribution System</h3>
-	
+		<h2>{{ food_network_name }} Distribution System</h2>
+
+	{% comment %}	
 		{% if user.is_authenticated %}
 			<div style="margin-bottom: 1em; " >
 				<form style="display: inline; " action="{% url send_fresh_list %}" method="POST">
@@ -49,8 +52,9 @@
 				</form>
 			</div>
 		{% endif %}
+	{% endcomment %}
 
-		<h4>
+		<h4 style="margin-bottom: 4px;" >
 			Activity for week of 
 			{% if user.is_authenticated %}
 				<form style="display: inline;" action="{% url reset_week %}" method="POST">
@@ -113,6 +117,7 @@
 		<h3>You must create a Food Network in Admin to proceed</h3>
 	
 	{% endif %}
+	</div>
 
 </div>
 {% endblock %} 

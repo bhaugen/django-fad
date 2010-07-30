@@ -10,6 +10,8 @@
 
 {% block content %}
 
+<div class="payment-update">
+
 	{% include "distribution/tabnav.html" %}
 
     <table >
@@ -76,6 +78,7 @@
                 <td style="text-align: right; ">{{ tx.amount }}</td>
             </tr>
         {% endfor %}
-    </table>
+	</table>
+</div<>
 
 {% endblock %} 

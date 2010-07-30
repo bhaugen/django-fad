@@ -43,6 +43,23 @@
 	</div>
 	{% endif %}
 
+	{% if recent_orders %}
+	<div style="border: 2px solid grey; width: 30%; padding-left: 1em;">
+		<h4>Recently submitted orders:</h4>
+		<ul>
+		{% for order in recent_orders %}
+
+			<li>
+				<a href="{% url order order_id=order.id %}">
+					#{{ order.id }} {{ order.order_date }} ${{ order.total_price }}
+				</a>
+			</li>
+
+		{% endfor %}
+		</ul>
+	</div>
+	{% endif %}
+
 	<div style="border: 2px solid grey; width: 30%; padding-left: 1em;">
 		<h4>New order:</h4>
 

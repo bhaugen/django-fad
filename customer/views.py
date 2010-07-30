@@ -46,6 +46,9 @@ def order_selection(request):
         customer=customer,
         state="Unsubmitted")
 
+    recent_orders = Order.objects.filter(
+        customer=customer).exclude(state="Unsubmitted").order_by('-order_date')[0:4]
+
     if request.method == "POST":
         if selection_form.is_valid():
             sf_data = selection_form.cleaned_data
@@ -60,6 +63,7 @@ def order_selection(request):
          'food_network': food_network,
          'selection_form': selection_form,
          'unsubmitted_orders': unsubmitted_orders,
+         'recent_orders': recent_orders,
          }, context_instance=RequestContext(request))
 
 def list_selection(request):
@@ -94,7 +98,7 @@ def history_selection(request):
     return render_to_response('customer/history_selection.html', 
         {'customer': customer,
          'food_network': food_network,
-         'date_range_form': drform,
+        'date_range_form': drform,
          }, context_instance=RequestContext(request))
 
 def plan_selection(request):
@@ -642,10 +646,11 @@ def invoices(request, cust_id, from_date, to_date):
             raise Http404
     else:
         raise Http404
+    #todo: shd include only unpaid but delivered orders?
     orders = Order.objects.filter(
         customer=customer, 
         order_date__range=(from_date, to_date),
-        state__contains="Paid"
+        state__contains="Delivered"
     )
     return render_to_response('distribution/invoices.html', {
         'orders': orders, 
@@ -664,6 +669,7 @@ def unpaid_invoice(request, order_id):
         'order': order,
         'network': fn,
     })
+
 
 @login_required
 def history(request, cust_id, from_date, to_date):
@@ -693,4 +699,5 @@ def history(request, cust_id, from_date, to_date):
         'network': fn,
         'tabnav': "customer/customer_tabnav.html",
     })
+
 

@@ -86,7 +86,7 @@ class PaymentUpdateSelectionForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super(PaymentUpdateSelectionForm, self).__init__(*args, **kwargs)
         self.fields['producer'].choices = [('', '----------')] + [(prod.id, prod.short_name) for prod in Party.subclass_objects.payable_members()]
-        self.fields['payment'].choices = [('', 'New')] + [(payment.id, payment) for payment in Payment.objects.all()]
+        self.fields['payment'].choices = [('', 'New')] + [(payment.id, payment) for payment in EconomicEvent.objects.payments_to_members()]
 
 class PaymentTransactionForm(forms.Form):
     transaction_id = forms.CharField(widget=forms.HiddenInput)
@@ -207,11 +207,10 @@ def create_payment_transaction_forms(producer=None, payment=None, data=None):
         if d.should_be_paid():
             form_list.append(create_processing_payment_form(d, pay_all, data))
 
-    due4 = TransportationTransaction.objects.filter(
-        order__paid=True,
-        from_whom=producer)
+    due4 = TransportationTransaction.objects.filter(from_whom=producer)
     for d in due4:
-        form_list.append(create_transportation_payment_form(d, pay_all, data))
+        if d.order.is_paid():
+            form_list.append(create_transportation_payment_form(d, pay_all, data))
     return form_list
 
 class InventoryHeaderForm(forms.Form):
