@@ -16,6 +16,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import MultipleObjectsReturned
 from django.core.mail import send_mail
 from django.forms.models import inlineformset_factory
+from django.db.models import Q
 
 from distribution.models import *
 from customer.forms import *
@@ -46,6 +47,11 @@ def order_selection(request):
         customer=customer,
         state="Unsubmitted")
 
+    #todo: changeable orders might have more rules
+    changeable_orders = Order.objects.filter(
+        Q(customer=customer) & 
+        (Q(state="Unsubmitted") | Q(state="Submitted"))).order_by('-order_date')
+
     recent_orders = Order.objects.filter(
         customer=customer).exclude(state="Unsubmitted").order_by('-order_date')[0:4]
 
@@ -63,6 +69,7 @@ def order_selection(request):
          'food_network': food_network,
          'selection_form': selection_form,
          'unsubmitted_orders': unsubmitted_orders,
+         'changeable_orders': changeable_orders,
          'recent_orders': recent_orders,
          }, context_instance=RequestContext(request))
 

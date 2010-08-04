@@ -1027,6 +1027,11 @@ class Order(models.Model):
 
     def __unicode__(self):
         return ' '.join([self.order_date.strftime('%Y-%m-%d'), self.customer.short_name])
+
+    def save(self, force_insert=False, force_update=False):
+        if self.paid:
+            state_reset = self.set_paid_state()
+        self.save_base(force_insert=False, force_update=False)
     
     def delete(self):
         deliveries = InventoryTransaction.objects.filter(order_item__order=self) 
@@ -1057,12 +1062,23 @@ class Order(models.Model):
                 self.state = "Delivered"
             self.save()
 
-    def register_customer_payment(self):
+    def set_paid_state(self):
+        """ This method is for internal use
+            (by order.save() and order.register_customer_payment())
+            and so does not include self.save().
+        """
+
         if self.state.find("Paid") < 0:
             if self.state == "Delivered":
                 self.state = "Delivered-Paid"
             else:
                 self.state = "Paid"
+            return True
+        else:
+            return False
+
+    def register_customer_payment(self):
+        if self.set_paid_state():
             self.save()
 
     def charge_name(self):
