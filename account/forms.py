@@ -8,6 +8,7 @@ from django.utils.encoding import smart_unicode
 
 #from misc.utils import get_send_mail
 #send_mail = get_send_mail()
+from mailer import send_mail
 
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
@@ -98,6 +99,6 @@ class ResetPasswordForm(forms.Form):
                 "user": user,
                 "new_password": new_password,
             })
-            #send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], priority="high")
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], priority="high")
         return self.cleaned_data["email"]
 
