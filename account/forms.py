@@ -85,8 +85,10 @@ class ResetPasswordForm(forms.Form):
     email = forms.EmailField(label=_("Email"), required=True, widget=forms.TextInput(attrs={'size':'30'}))
 
     def clean_email(self):
-        if EmailAddress.objects.filter(email__iexact=self.cleaned_data["email"], verified=True).count() == 0:
+        if User.objects.filter(email__iexact=self.cleaned_data["email"]).count() == 0:
             raise forms.ValidationError(_("Email address not verified for any user account"))
+        if User.objects.filter(email__iexact=self.cleaned_data["email"]).count() > 1:
+            raise forms.ValidationError(_("More than one user has that email address, cannot reset password"))
         return self.cleaned_data["email"]
 
     def save(self):
